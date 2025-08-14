@@ -178,8 +178,8 @@ static const ElsterIndex ElsterTable[] =
         {"FERIENBETRIEB", 0x006f, 0, "VACATION_MODE"},
         {"DREHZAHLREG_JA_NEIN", 0x0070, 0, "VARIABLE_SPEED_DRIVE_ENABLED"},
         {"ANFORDERUNG_LEISTUNGSZWANG", 0x0071, 0, "DEMAND_FOR_POWER"},
-        {"ANTILEG_AKTIV", 0x0072, 0, "ANTILEGIONNAIRE_ACTIVE"},
-        {"BITSCHALTER", 0x0073, 0, "BIT_SWITCH"},
+        {"ANTILEG_AKTIV", 0x0072, et_dec_val, "ANTILEGIONNAIRE_ACTIVE"},
+        {"BITSCHALTER", 0x0073, et_little_endian, "BIT_SWITCH"},
         {"EVU_SPERRE_AKTIV", 0x0074, 0, "UTILITY_LOCK_ACTIVE"},
         {"FEUCHTE", 0x0075, et_dec_val, "HUMIDITY"},
         {"PUFFERTEMP_OBEN1", 0x0076, et_dec_val, "BUFFER_TEMP_TOP1"},
@@ -3747,3 +3747,4 @@ static const ErrorIndex BetriebsartList[] =
         {0x0500, "Warmwasser"}};
 
 #endif
+
