@@ -158,7 +158,7 @@ static const ElsterIndex ElsterTable[] =
         {"SPEICHER_STATUS", 0x005a, et_little_endian, "STORAGE_TANK_STATUS"},
         {"SCHALTERSTELLUNG", 0x005b, 0, "SWITCH_POSITION"},
         {"ANFAHRENT", 0x005d, 0, "STARTUP"},
-        {"TEILVORRANG_WW", 0x005e, 0, "PARTIAL_LOAD_WW"},
+        {"TEILVORRANG_WW", 0x005e, et_byte, "PARTIAL_LOAD_WW"},
         {"SPEICHERBEDARF", 0x005f, 0, "STORAGE_DEMAND"},
         {"SCHALTFKT_IWS", 0x0060, 0, "SWITCHING_FUNCTION_IWS"},
         {"ABTAUUNGAKTIV", 0x0061, 0, "DEFROST_ACTIVE"},
@@ -3747,4 +3747,5 @@ static const ErrorIndex BetriebsartList[] =
         {0x0500, "Warmwasser"}};
 
 #endif
+
 
