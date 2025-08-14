@@ -736,7 +736,6 @@ canbus:
               unsigned short canId = 301;
               std::string value;
               const ElsterIndex* ei = processCanMessage(canId, value, x);
-
       - can_id: 0x509
         then:
           - lambda: |-

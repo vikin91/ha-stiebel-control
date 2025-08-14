@@ -73,11 +73,20 @@ typedef enum
 
 const ElsterIndex *processCanMessage(unsigned short can_id, std::string &signalValue, std::vector<unsigned char> msg)
 {
-  // Return if the message is too small
-  if (msg.size() < 7)
-  {
-    return &ElsterTable[0];
-  }
+    // Return if the message is too small
+    if (msg.size() < 7)
+    {
+        ESP_LOGW("processCanMessage()", "CAN message too short: %d bytes", (int)msg.size());
+        return &ElsterTable[0];
+    }
+    
+    // Enhanced validation based on Jürg's Stiebel-Eltron protocol specs
+    // Check if this looks like a valid Stiebel-Eltron message format
+    if ((msg[0] != 0xa0 && msg[0] != 0xa1 && msg[0] != 0x60 && msg[0] != 0x61) ||
+        (msg[1] != 0x00 && msg[1] != 0x01 && msg[1] != 0x72 && msg[1] != 0x73 && msg[1] != 0x79 && msg[1] != 0x08 && msg[1] != 0xa0 && msg[1] != 0xa1)) {
+        ESP_LOGD("processCanMessage()", "Possibly non-Stiebel message format: %02x %02x %02x %02x %02x %02x %02x",
+                 msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6]);
+    }
 
   const ElsterIndex *ei;
   unsigned char byte1;
@@ -97,25 +106,61 @@ const ElsterIndex *processCanMessage(unsigned short can_id, std::string &signalV
     ei = GetElsterIndex(int(msg[2]));
   }
 
-  switch (ei->Type)
-  {
-  case et_double_val:
-    SetDoubleType(charValue, ei->Type, double(byte2 + (byte1 << 8)));
-    break;
-  case et_triple_val:
-    SetDoubleType(charValue, ei->Type, double(byte2 + (byte1 << 8)));
-    break;
-  default:
-    SetValueType(charValue, ei->Type, int(byte2 + (byte1 << 8)));
-    break;
-  }
+    // Fix signed integer handling for older devices - Jürg's protocol uses signed 16-bit values
+    int rawValue = int(byte2 + (byte1 << 8));
+    // Convert to signed 16-bit if needed (for negative temperatures, etc.)
+    if (rawValue > 32767) {
+        rawValue = rawValue - 65536;  // Convert unsigned to signed 16-bit
+    }
+    
+    switch (ei->Type)
+    {
+    case et_double_val:
+        SetDoubleType(charValue, ei->Type, double(rawValue));
+        break;
+    case et_triple_val:
+        SetDoubleType(charValue, ei->Type, double(rawValue));
+        break;
+    default:
+        SetValueType(charValue, ei->Type, rawValue);
+        break;
+    }
 
-  // sprintf(logString, "%d;%s;%s;%s", can_id, ei->Name, charValue, ElsterTypeStr[ei->Type]);
-  // id(received_can_signal).publish_state(logString);
-  ESP_LOGI("processCanMessage()", "%d:\t%s:\t%s\t(%s)", can_id, ei->EnglishName, charValue, ElsterTypeStr[ei->Type]);
+    // Enhanced logging for older device compatibility (based on Jürg's work)
+    if (ei->Index == 0x0000) {
+        unsigned short unknownIndex;
+        if (int(msg[2]) == 0xfa) {
+            unknownIndex = int((msg[4]) + ((msg[3]) << 8));
+        } else {
+            unknownIndex = int(msg[2]);
+        }
+        ESP_LOGW("processCanMessage()", "%d:\tUNKNOWN_INDEX_0x%04X:\t%s\t(raw: %02x %02x %02x %02x %02x %02x %02x)",
+                 can_id, unknownIndex, charValue, msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6]);
+        
+        // Log common unknown indices that might be from older devices needing ElsterTable updates
+        if (unknownIndex == 0x3c || unknownIndex == 0xbe || unknownIndex == 0xf2 || 
+            unknownIndex == 0x5f || unknownIndex == 0x56 || unknownIndex == 0x16) {
+            ESP_LOGI("processCanMessage()", "Common older device index 0x%04X - consider updating ElsterTable", unknownIndex);
+        }
+    } else {
+        ESP_LOGI("processCanMessage()", "%d:\t%s:\t%s\t(%s)", can_id, ei->EnglishName, charValue, ElsterTypeStr[ei->Type]);
+        
+        // Enhanced validation for older device values (Jürg's protocol ranges)
+        double value = std::stod(charValue);
+        if (strstr(ei->EnglishName, "TEMP")) {
+            if (value < -50.0 || value > 150.0) {
+                ESP_LOGW("processCanMessage()", "Temperature out of range for %s: %s (possible older device index mismatch)", 
+                        ei->EnglishName, charValue);
+            }
+        } else if (strstr(ei->EnglishName, "ACTIVE") || strstr(ei->EnglishName, "STATUS")) {
+            if (value != 0.0 && value != 1.0 && (value < -10 || value > 1000)) {
+                ESP_LOGW("processCanMessage()", "Suspicious status value for %s: %s", ei->EnglishName, charValue);
+            }
+        }
+    }
 
-  signalValue = (std::string)charValue;
-  return ei;
+    signalValue = (std::string)charValue;
+    return ei;
 }
 
 void readSignal(const CanMember *member, const ElsterIndex *ei)
