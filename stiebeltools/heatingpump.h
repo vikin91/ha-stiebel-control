@@ -19,6 +19,7 @@
 #define heatingpump_H
 #include "ElsterTable.h"
 #include "KElsterTable.h"
+#include "CanMessageMqttLogger.h"
 
 typedef struct
 {
@@ -160,6 +161,10 @@ const ElsterIndex *processCanMessage(unsigned short can_id, std::string &signalV
     }
 
     signalValue = (std::string)charValue;
+    
+    // Publish to MQTT (non-blocking, failures won't affect CAN processing)
+    publishCanMessageToMqtt(can_id, msg, ei, signalValue, byte1, byte2, rawValue);
+    
     return ei;
 }
 

@@ -1,0 +1,83 @@
+# MQTT CAN Message Logger Configuration
+# 
+# This configuration file is used by mqtt_to_database.py to connect
+# to your MQTT broker and store CAN messages in a database.
+
+# ============================================================================
+# MQTT CONFIGURATION
+# ============================================================================
+mqtt:
+  broker: 192.168.178.11       # Your MQTT broker IP (e.g., Home Assistant)
+  port: 1883                  # Default MQTT port (8883 for TLS)
+  username: stiebel         # MQTT username
+  password: stiebel     # MQTT password
+  client_id: can_logger       # Unique client ID
+  topic: homeassistant/stiebel/can_raw/#  # Subscribe to all CAN messages
+
+# ============================================================================
+# DATABASE CONFIGURATION
+# ============================================================================
+# Choose ONE database type: postgresql, mysql, sqlite, or influxdb
+
+# Option 1: PostgreSQL (Recommended for production)
+database:
+  type: postgresql
+  host: localhost
+  port: 5432
+  database: stiebel_can
+  username: dbuser
+  password: dbpassword
+
+# Option 2: MySQL/MariaDB
+# database:
+#   type: mysql
+#   host: 192.168.1.200
+#   port: 3306
+#   database: stiebel_can
+#   username: dbuser
+#   password: dbpassword
+
+# Option 3: SQLite (Simple, local file)
+# database:
+#   type: sqlite
+#   path: /home/user/can_messages.db
+
+# Option 4: InfluxDB (Time-series, great for grafana)
+# database:
+#   type: influxdb
+#   url: http://192.168.1.200:8086
+#   token: your-influxdb-token
+#   org: your-org
+#   bucket: can_messages
+
+# ============================================================================
+# LOGGING CONFIGURATION
+# ============================================================================
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
+
+# ============================================================================
+# NOTES
+# ============================================================================
+# 
+# PostgreSQL Setup:
+#   CREATE DATABASE stiebel_can;
+#   CREATE USER dbuser WITH PASSWORD 'dbpassword';
+#   GRANT ALL PRIVILEGES ON DATABASE stiebel_can TO dbuser;
+#
+# MySQL Setup:
+#   CREATE DATABASE stiebel_can;
+#   CREATE USER 'dbuser'@'%' IDENTIFIED BY 'dbpassword';
+#   GRANT ALL PRIVILEGES ON stiebel_can.* TO 'dbuser'@'%';
+#
+# InfluxDB Setup:
+#   Create bucket 'can_messages' in InfluxDB UI
+#   Generate API token with write access
+#
+# Required Python packages:
+#   pip install paho-mqtt pyyaml sqlalchemy
+#   
+#   For PostgreSQL: pip install psycopg2-binary
+#   For MySQL: pip install pymysql
+#   For InfluxDB: pip install influxdb-client
+

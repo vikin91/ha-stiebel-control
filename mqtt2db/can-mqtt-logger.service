@@ -1,0 +1,28 @@
+[Unit]
+Description=Stiebel CAN MQTT to Database Logger
+After=network.target postgresql.service mosquitto.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=user
+WorkingDirectory=/home/user/mqtt2db
+Environment="SQLALCHEMY_SILENCE_UBER_WARNING=1"
+ExecStart=/usr/bin/python3 /home/user/mqtt2db/mqtt_to_database.py --config /home/user/mqtt2db/mqtt_logger_config.yaml
+
+# Restart on failure
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=can-mqtt-logger
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+
