@@ -121,7 +121,9 @@
     #define ftell ltell
   #endif
 
+  #ifndef High
   #define High(A)     (sizeof(A)/sizeof(A[0]) - 1)
+  #endif
 
 #ifdef __cplusplus
 

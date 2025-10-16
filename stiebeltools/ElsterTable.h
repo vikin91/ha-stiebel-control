@@ -34,7 +34,9 @@
 
 #include <string.h>
 
+#ifndef High
 #define High(A) (sizeof(A) / sizeof(A[0]) - 1)
+#endif
 
 static const char *ElsterTypeStr[] =
     {
@@ -159,7 +161,7 @@ static const ElsterIndex ElsterTable[] =
         {"SCHALTERSTELLUNG", 0x005b, 0, "SWITCH_POSITION"},
         {"ANFAHRENT", 0x005d, 0, "STARTUP"},
         {"TEILVORRANG_WW", 0x005e, et_byte, "PARTIAL_LOAD_WW"},
-        {"SPEICHERBEDARF", 0x005f, 0, "STORAGE_DEMAND"},
+        {"VERDICHTER_STATUS", 0x005f, et_little_endian, "COMPRESSOR_STATUS"}, // Manager->Pump: 0=OFF, 512=ON
         {"SCHALTFKT_IWS", 0x0060, 0, "SWITCHING_FUNCTION_IWS"},
         {"ABTAUUNGAKTIV", 0x0061, 0, "DEFROST_ACTIVE"},
         {"WAERMEPUMPEN_STATUS", 0x0062, et_little_endian, "HEAT_PUMP_STATUS"},
@@ -209,6 +211,12 @@ static const ElsterIndex ElsterTable[] =
         {"FEUCHTE_HYSTERESE", 0x008e, 0, "HUMIDITY_HYSTERESIS"},
         {"LOAD_STANDARD", 0x00ef, 0, "LOAD_STANDARD"},
         {"ONL_CODENUMMER", 0x00f0, 0, "ONL_CODE_NUMBER"},
+        // ✅ VERIFIED 2025-10-08: Older models (pre-WPL13E) use 0x00f4 for multiplexed room circuit data
+        // Contains: Room temperature sensor (548-588 = 14.8-18.8°C, formula: (value-400)/10)
+        //           + 5 other multiplexed circuits (CIRCUIT_A/B/C/D/E)
+        //           + Mystery parameter -25504 (burst terminator, filter in processing)
+        // Type 0 (raw) because values are multiplexed and need different conversions
+        {"RAUMTEMP_MULTIPLEXED", 0x00f4, 0, "ROOM_TEMP_MULTIPLEXED"},
         {"ERWEITERUNGSTELEGRAMM", 0x00fa, 0, "EXTENSION_TELEGRAM"},
         {"SYSTEM_RESET", 0x00fb, 0, "SYSTEM_RESET"},
         {"CAN_FEHLERMELDUNG", 0x00fc, 0, "CAN_ERROR_MESSAGE"},
