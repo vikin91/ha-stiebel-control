@@ -52,7 +52,52 @@ homeassistant:
 ![Dashboard Screenshot](assets/img/dashboard.jpg "Dashboard Screenshot")
 
 ## Using
-* FIXME
+
+### CAN Message MQTT Logging (NEW)
+
+The system now publishes all CAN messages to MQTT, allowing you to store them in **any database** on **any server** in your network. This is useful for:
+- **Network-accessible storage** - Access from anywhere on your LAN
+- **Any database** - PostgreSQL, MySQL, InfluxDB, or SQLite
+- **Home Assistant integration** - Create automations based on CAN messages
+- **Long-term monitoring** - Unlimited storage on your server
+- **Real-time analysis** - Grafana dashboards, custom tools
+
+**Quick Setup:**
+1. Add MQTT configuration to your ESPHome YAML (see `mqtt_can_logger_addon.yaml`)
+2. Deploy to ESP32 - **Done!** Messages now published to MQTT
+3. (Optional) Run `mqtt_to_database.py` to store in database
+
+**Example ESPHome Config:**
+```yaml
+mqtt:
+  broker: 192.168.1.100  # Your Home Assistant IP
+  username: !secret mqtt_username
+  password: !secret mqtt_password
+  id: mqtt_client
+
+esphome:
+  includes:
+    - stiebeltools/CanMessageMqttLogger.h
+```
+
+**Store in Database (Optional):**
+```bash
+# Edit configuration
+cp mqtt_logger_config.yaml my_config.yaml
+nano my_config.yaml
+
+# Install dependencies
+pip install paho-mqtt pyyaml sqlalchemy psycopg2-binary
+
+# Run logger
+python3 mqtt_to_database.py --config my_config.yaml
+```
+
+**MQTT Topics:**
+All messages published to: `homeassistant/stiebel/can_raw/<CAN_ID>/<PARAMETER_NAME>`
+
+**Documentation:**
+See `MQTT_CAN_LOGGER_GUIDE.md` for complete setup instructions, database options, Home Assistant integration, and Grafana dashboards.
 
 ## Contributing
 

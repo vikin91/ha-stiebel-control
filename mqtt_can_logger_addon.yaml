@@ -1,0 +1,150 @@
+# MQTT CAN Message Logger Configuration
+# 
+# Add this to your ESPHome YAML to publish all CAN messages to MQTT
+# These messages can then be stored in any database using the provided Python script
+
+# ============================================================================
+# MQTT CONFIGURATION
+# ============================================================================
+mqtt:
+  broker: 192.168.1.100  # Your MQTT broker IP (e.g., Home Assistant)
+  port: 1883
+  username: !secret mqtt_username
+  password: !secret mqtt_password
+  id: mqtt_client
+  # Optional: Set a last will message
+  birth_message:
+    topic: homeassistant/stiebel/status
+    payload: online
+  will_message:
+    topic: homeassistant/stiebel/status
+    payload: offline
+  # Optional: Enable logging
+  on_message:
+    - topic: homeassistant/stiebel/command/#
+      then:
+        - lambda: |-
+            ESP_LOGI("mqtt", "Received command: %s", x.c_str());
+
+# ============================================================================
+# ADD TO YOUR esphome: SECTION
+# ============================================================================
+esphome:
+  # ... your existing configuration ...
+  
+  includes:
+    - stiebeltools/heatingpump.h
+    - stiebeltools/ElsterTable.h
+    - stiebeltools/KElsterTable.h
+    - stiebeltools/KElsterTable.cpp
+    - stiebeltools/NUtils.cpp
+    - stiebeltools/CanMessageMqttLogger.h  # <-- ADD THIS
+
+# That's it! All CAN messages are now automatically published to MQTT
+
+# ============================================================================
+# MQTT TOPIC STRUCTURE
+# ============================================================================
+# All messages published to: homeassistant/stiebel/can_raw/<CAN_ID>/<PARAMETER_NAME>
+#
+# Examples:
+#   homeassistant/stiebel/can_raw/180/OUTSIDE_TEMP
+#   homeassistant/stiebel/can_raw/180/RETURN_FLOW_INTERNAL_TEMP
+#   homeassistant/stiebel/can_raw/480/ERROR_MESSAGE
+#
+# Payload (JSON):
+# {
+#   "timestamp": 123456,           // Milliseconds since boot
+#   "can_id": 384,                 // CAN bus ID (0x180 = 384)
+#   "addressee": "PUMP",           // Device name
+#   "elster_idx": 90,              // Elster protocol index
+#   "name": "OUTSIDE_TEMP",        // Parameter name
+#   "value": "23.5",               // Interpreted value
+#   "type": "dec_val",             // Data type
+#   "raw_hex": "31 00 5a 00 e8",  // Raw CAN message bytes
+#   "raw_value": 1000              // Raw 16-bit value
+# }
+
+# ============================================================================
+# OPTIONAL: MONITORING SENSORS
+# ============================================================================
+sensor:
+  # ... your existing sensors ...
+  
+  # Track MQTT connection status
+  - platform: mqtt_subscribe
+    name: "MQTT CAN Logger Status"
+    id: mqtt_status
+    topic: homeassistant/stiebel/status
+    
+  # Count published messages (requires external counter)
+  - platform: template
+    name: "CAN Messages Published"
+    id: can_mqtt_count
+    icon: "mdi:counter"
+    update_interval: 60s
+    lambda: |-
+      // This would need custom logic to track message count
+      return 0;
+
+# ============================================================================
+# OPTIONAL: DEBUG SENSOR
+# ============================================================================
+text_sensor:
+  - platform: mqtt_subscribe
+    name: "Last CAN Message"
+    id: last_can_msg
+    topic: homeassistant/stiebel/can_raw/+/+
+    qos: 0
+    # Shows the last received message for debugging
+
+# ============================================================================
+# HOME ASSISTANT INTEGRATION
+# ============================================================================
+# In Home Assistant, you can now:
+#
+# 1. Subscribe to all CAN messages:
+#    Topic: homeassistant/stiebel/can_raw/#
+#
+# 2. Subscribe to specific device:
+#    Topic: homeassistant/stiebel/can_raw/180/#  (PUMP only)
+#
+# 3. Subscribe to specific parameter:
+#    Topic: homeassistant/stiebel/can_raw/+/OUTSIDE_TEMP  (all devices)
+#
+# 4. Create automations based on CAN messages
+#
+# 5. Use the Python subscriber script to store in database
+
+# ============================================================================
+# PERFORMANCE NOTES
+# ============================================================================
+# - MQTT publish is ~2-5ms per message
+# - No local storage required on ESP32
+# - Network resilient: Messages lost if MQTT unavailable, but CAN processing continues
+# - Consider QoS 0 for high-frequency messages (no guarantee)
+# - Consider QoS 1 if you need guaranteed delivery (slower)
+
+# ============================================================================
+# SECURITY NOTES
+# ============================================================================
+# 1. Use strong MQTT username/password
+# 2. Consider using TLS/SSL for MQTT (set port to 8883)
+# 3. Restrict MQTT broker access to local network
+# 4. Use Home Assistant's built-in MQTT broker for simplicity
+# 5. Store credentials in secrets.yaml:
+#
+# secrets.yaml:
+#   mqtt_username: your_mqtt_user
+#   mqtt_password: your_secure_password
+
+# ============================================================================
+# TROUBLESHOOTING
+# ============================================================================
+# If messages aren't appearing:
+# 1. Check MQTT broker is running: mosquitto_sub -h 192.168.1.100 -t '#'
+# 2. Verify credentials are correct
+# 3. Check ESP32 logs for MQTT connection errors
+# 4. Ensure firewall allows port 1883
+# 5. Test with: mosquitto_pub -h 192.168.1.100 -t test -m "hello"
+

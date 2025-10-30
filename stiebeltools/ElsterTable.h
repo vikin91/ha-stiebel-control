@@ -158,7 +158,7 @@ static const ElsterIndex ElsterTable[] =
         {"SPEICHER_STATUS", 0x005a, et_little_endian, "STORAGE_TANK_STATUS"},
         {"SCHALTERSTELLUNG", 0x005b, 0, "SWITCH_POSITION"},
         {"ANFAHRENT", 0x005d, 0, "STARTUP"},
-        {"TEILVORRANG_WW", 0x005e, 0, "PARTIAL_LOAD_WW"},
+        {"TEILVORRANG_WW", 0x005e, et_byte, "PARTIAL_LOAD_WW"},
         {"SPEICHERBEDARF", 0x005f, 0, "STORAGE_DEMAND"},
         {"SCHALTFKT_IWS", 0x0060, 0, "SWITCHING_FUNCTION_IWS"},
         {"ABTAUUNGAKTIV", 0x0061, 0, "DEFROST_ACTIVE"},
@@ -178,8 +178,8 @@ static const ElsterIndex ElsterTable[] =
         {"FERIENBETRIEB", 0x006f, 0, "VACATION_MODE"},
         {"DREHZAHLREG_JA_NEIN", 0x0070, 0, "VARIABLE_SPEED_DRIVE_ENABLED"},
         {"ANFORDERUNG_LEISTUNGSZWANG", 0x0071, 0, "DEMAND_FOR_POWER"},
-        {"ANTILEG_AKTIV", 0x0072, 0, "ANTILEGIONNAIRE_ACTIVE"},
-        {"BITSCHALTER", 0x0073, 0, "BIT_SWITCH"},
+        {"ANTILEG_AKTIV", 0x0072, et_dec_val, "ANTILEGIONNAIRE_ACTIVE"},
+        {"BITSCHALTER", 0x0073, et_little_endian, "BIT_SWITCH"},
         {"EVU_SPERRE_AKTIV", 0x0074, 0, "UTILITY_LOCK_ACTIVE"},
         {"FEUCHTE", 0x0075, et_dec_val, "HUMIDITY"},
         {"PUFFERTEMP_OBEN1", 0x0076, et_dec_val, "BUFFER_TEMP_TOP1"},
@@ -3747,3 +3747,5 @@ static const ErrorIndex BetriebsartList[] =
         {0x0500, "Warmwasser"}};
 
 #endif
+
+
