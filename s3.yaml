@@ -3,7 +3,7 @@ esphome:
   friendly_name: Heating Pump CAN Interface S3
   project:
     name: "canbus.stiebel-eltron-wpf10m"
-    version: "0.1.4"
+    version: "0.1.5"
   includes:
     - stiebeltools/ElsterTable.h
     - stiebeltools/KElsterTable.cpp
