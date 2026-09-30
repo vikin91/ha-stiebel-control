@@ -64,6 +64,13 @@ int main() {
                           temperature, std::string(600, 'x'), 232);
   assert(test_canbus.publish_count == published_before_oversized_value);
 
+  const auto *room_multiplexed = processCanMessage(
+      0x480, signal_value, {0xa0, 0x73, 0xf4, 0x02, 0x4c, 0x00, 0x01});
+  assert(room_multiplexed->Index == 0x00f4);
+  assert(room_multiplexed->Type == et_default);
+  assert(std::strcmp(room_multiplexed->EnglishName, "ROOM_TEMP_MULTIPLEXED") == 0);
+  assert(signal_value == "588");
+
   const auto *mode = processCanMessage(
       0x480, signal_value, {0xa0, 0x00, 0xfa, 0x01, 0x12, 0x02, 0x00});
   assert(mode->Type == et_betriebsart);

@@ -211,6 +211,8 @@ static const ElsterIndex ElsterTable[] =
         {"FEUCHTE_HYSTERESE", 0x008e, 0, "HUMIDITY_HYSTERESIS"},
         {"LOAD_STANDARD", 0x00ef, 0, "LOAD_STANDARD"},
         {"ONL_CODENUMMER", 0x00f0, 0, "ONL_CODE_NUMBER"},
+        // EXPERIMENTAL: 0x00F4 may multiplex room temperature and other values.
+        {"RAUMTEMP_MULTIPLEXED", 0x00f4, et_default, "ROOM_TEMP_MULTIPLEXED"},
         {"ERWEITERUNGSTELEGRAMM", 0x00fa, 0, "EXTENSION_TELEGRAM"},
         {"SYSTEM_RESET", 0x00fb, 0, "SYSTEM_RESET"},
         {"CAN_FEHLERMELDUNG", 0x00fc, 0, "CAN_ERROR_MESSAGE"},

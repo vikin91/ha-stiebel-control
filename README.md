@@ -4,7 +4,7 @@ ESPHome and Home Assistant configuration for monitoring a Stiebel Eltron heat pu
 
 ## ESPHome configuration
 
-- [`s3.yaml`](s3.yaml) is the ESP32-S3 WPF10M configuration used for the v0.1.5 baseline. It is the configuration currently tested on the heat pump.
+- [`s3.yaml`](s3.yaml) is the ESP32-S3 WPF10M configuration. Version 0.1.5 was tested on the heat pump; the 0.1.6 changes on the medium-fixes branch still need a firmware build and device test.
 - [`heatingpump_en_prod.yaml`](heatingpump_en_prod.yaml) is an older ESP32 configuration for different hardware. Its pins, network settings, and sensor set differ from `s3.yaml`.
 - The Elster table includes entries for several models. Many values have not been verified on WPF10M. Confirm an index against observed CAN traffic before using it to control the heat pump.
 
@@ -16,6 +16,8 @@ To install the S3 configuration in ESPHome Device Builder:
 4. Validate, compile, and install with ESPHome Device Builder. Copying source files alone does not update the firmware on the ESP.
 
 The read/write CAN members are defined in [`stiebeltools/heatingpump.h`](stiebeltools/heatingpump.h). The CAN receive handlers and Home Assistant sensor routing are in `s3.yaml`.
+
+The existing `STORAGE_TANK_SETPOINT_TEMP` sensor still receives FE7X (`0x301`) messages. `STORAGE_TANK_SETPOINT_TEMP_PUMP` shows pump (`0x180`) replies to the existing setpoint read request, so the two readings can be compared in Home Assistant. `BEDROOM_TEMP_HK2` is an experimental interpretation of manager (`0x480`) index `0x00F4`; its conversion has not been verified on this WPF10. Other declared sensors without receive-handler routing remain empty until their CAN mapping is identified.
 
 ## Home Assistant
 
