@@ -3629,7 +3629,6 @@ static const ElsterIndex ElsterTable[] =
         {"SOLARBETRIEB", 0xfdb7, et_little_endian, "SOLAR_OPERATION"},
         {"WAERMEMENGE", 0xfdb8, et_little_endian, "HEAT_QUANTITY"},
         {"WW_LERNEN", 0xfdb9, et_little_endian, "LEARNING_DHW"},
-        {"AUTOMATIK_WARMWASSER", 0xfdb9, et_little_bool, "AUTOMATIC_HOT_WATER"},
         {"ZWEITER_WE_STATUS", 0xfdba, 0, "SECONDARY_EMERGENCY_STATUS"},
         {"WPSTUFEN_WW", 0xfdbb, et_little_endian, "HP_STAGES_DHW"},
         {"WW_MIT_2WE", 0xfdbc, et_little_endian, "WW_MIT_2WE"},
