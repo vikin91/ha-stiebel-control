@@ -720,11 +720,6 @@ canbus:
           - lambda: |-
               std::string value;
               const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
-      - can_id: 0x301
-        then:
-          - lambda: |-
-              std::string value;
-              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
       - can_id: 0x509
         then:
           - lambda: |-
