@@ -18,6 +18,10 @@
 #if !defined(CAN_MESSAGE_MQTT_LOGGER_H)
 #define CAN_MESSAGE_MQTT_LOGGER_H
 
+#include <cstdio>
+#include <string>
+#include <vector>
+
 #include "ElsterTable.h"
 #include "KElsterTable.h"
 
@@ -34,41 +38,18 @@
 // Helper to get CAN member name from CAN ID
 static inline const char* getCanMemberName(unsigned short can_id) {
     switch (can_id) {
-        case 0x680:
-        case 680: return "ESPCLIENT";
-        
-        case 0x180:
-        case 180: return "PUMP";
-        
-        case 0x301:
-        case 301: return "FE7X";
-        
-        case 0x302:
-        case 302: return "FEK";
-        
-        case 0x480:
-        case 480: return "MANAGER";
-        
-        case 0x602:
-        case 602: return "FE7";
-        
-        case 0x100:
-        case 100: return "CAN_0x100";
-        
-        case 0x509:
-        case 509: return "CAN_0x509";
-        
-        case 0x514:
-        case 514: return "CAN_0x514";
-        
-        case 0x601:
-        case 601: return "CAN_0x601";
-        
-        case 0x603:
-        case 603: return "CAN_0x603";
-        
-        case 0x700:
-        case 700: return "CAN_0x700";
+        case 0x680: return "ESPCLIENT";
+        case 0x180: return "PUMP";
+        case 0x301: return "FE7X";
+        case 0x302: return "FEK";
+        case 0x480: return "MANAGER";
+        case 0x602: return "FE7";
+        case 0x100: return "CAN_0x100";
+        case 0x509: return "CAN_0x509";
+        case 0x514: return "CAN_0x514";
+        case 0x601: return "CAN_0x601";
+        case 0x603: return "CAN_0x603";
+        case 0x700: return "CAN_0x700";
         
         default: return "UNKNOWN";
     }
@@ -76,18 +57,15 @@ static inline const char* getCanMemberName(unsigned short can_id) {
 
 // Helper to convert raw bytes to hex string
 static inline std::string rawBytesToHex(const std::vector<unsigned char>& msg) {
-    if (msg.empty()) return "";
-    
-    char buffer[256];
-    int offset = 0;
-    for (size_t i = 0; i < msg.size() && offset < 240; i++) {
-        offset += sprintf(buffer + offset, "%02x", msg[i]);
-        if (i < msg.size() - 1) {
-            buffer[offset++] = ' ';
-        }
+    constexpr char digits[] = "0123456789abcdef";
+    std::string hex;
+    hex.reserve(msg.size() * 3);
+    for (unsigned char byte : msg) {
+        if (!hex.empty()) hex += ' ';
+        hex += digits[byte >> 4];
+        hex += digits[byte & 0x0f];
     }
-    buffer[offset] = '\0';
-    return std::string(buffer);
+    return hex;
 }
 
 // Track connection state to avoid log spam
@@ -99,17 +77,11 @@ static unsigned long last_mqtt_check = 0;
 // This function should be called from processCanMessage()
 // It publishes a JSON payload with all message details
 // 
-// SAFETY: This function will NEVER crash CAN processing, even if:
-// - MQTT is not configured
-// - MQTT broker is unavailable
-// - Network connection is lost
-// - MQTT credentials are wrong
+// Best-effort publishing: messages are dropped while disconnected or if publish fails.
 inline void publishCanMessageToMqtt(unsigned short can_id,
                                    const std::vector<unsigned char>& msg,
                                    const ElsterIndex* ei,
                                    const std::string& interpretedValue,
-                                   unsigned char byte1,
-                                   unsigned char byte2,
                                    int rawValue) {
     // Safety check - null pointer protection
     if (!ei) return;
@@ -181,9 +153,9 @@ inline void publishCanMessageToMqtt(unsigned short can_id,
                 "\"raw_hex\":\"%s\","
                 "\"raw_value\":%d}",
                 (unsigned long)(millis()),
-                can_id,
+                static_cast<unsigned>(can_id),
                 getCanMemberName(can_id),
-                elsterIndex,
+                static_cast<unsigned>(elsterIndex),
                 ei->EnglishName ? ei->EnglishName : "UNKNOWN",
                 interpretedValue.c_str(),
                 ElsterTypeToName(ei->Type),
@@ -192,19 +164,21 @@ inline void publishCanMessageToMqtt(unsigned short can_id,
     
     // Check for buffer overflow
     if (written < 0 || written >= (int)sizeof(json)) {
-        ESP_LOGW("MqttLogger", "JSON payload too large, truncated");
+        ESP_LOGW("MqttLogger", "JSON payload too large; CAN message dropped");
+        return;
     }
     
     // Build topic: homeassistant/stiebel/can_raw/<CAN_ID_HEX>/<ELSTER_NAME>
     char topic[128];
     int topic_len = snprintf(topic, sizeof(topic), 
             "homeassistant/stiebel/can_raw/%03x/%s",
-            can_id,
+            static_cast<unsigned>(can_id),
             ei->EnglishName ? ei->EnglishName : "UNKNOWN");
     
     // Check for topic overflow
     if (topic_len < 0 || topic_len >= (int)sizeof(topic)) {
-        ESP_LOGW("MqttLogger", "MQTT topic too long, truncated");
+        ESP_LOGW("MqttLogger", "MQTT topic too long; CAN message dropped");
+        return;
     }
     
     #ifdef USE_MQTT
@@ -219,7 +193,7 @@ inline void publishCanMessageToMqtt(unsigned short can_id,
         static unsigned long last_publish_error = 0;
         unsigned long now = millis();
         if (now - last_publish_error > 60000) {  // Log once per minute
-            ESP_LOGW("MqttLogger", "MQTT publish failed (will retry automatically)");
+            ESP_LOGW("MqttLogger", "MQTT publish failed; CAN message dropped");
             last_publish_error = now;
         }
     }
@@ -227,4 +201,3 @@ inline void publishCanMessageToMqtt(unsigned short can_id,
 }
 
 #endif // CAN_MESSAGE_MQTT_LOGGER_H
-

@@ -1,111 +1,46 @@
 # ha-stiebel-control
 
-ha-stiebel-control is a ESPhome / Home Assistant configuration to monitor & configure Stiebel Eltron Heating Pumps via a CAN Interface.
-It requires setting up an ESP32 Microcontroller with a MCP2515 CAN-Tranceiver and some configuring in Home Assistant.
-It is based on the great work of the Home Assistant community, especially the work of [roberreiters](https://community.home-assistant.io/t/configured-my-esphome-with-mcp2515-can-bus-for-stiebel-eltron-heating-pump/366053) and [Jürg Müller](http://juerg5524.ch/list_data.php).
+ESPHome and Home Assistant configuration for monitoring a Stiebel Eltron heat pump over CAN with an ESP32 and MCP2515 transceiver. This project builds on work by the [Home Assistant community](https://community.home-assistant.io/t/configured-my-esphome-with-mcp2515-can-bus-for-stiebel-eltron-heating-pump/366053) and [Jürg Müller](http://juerg5524.ch/list_data.php).
 
-## Installation
+## ESPHome configuration
 
-### ESPHome
-* Set up a new ESPHome Project "heatingpump"
-* Copy the Content of `heatingpump.yaml` to the new project
-* copy the folder `stiebeltools`to your `/config/esphome` folder (full path should be `/config/esphome/stiebeltools`)
-* Change the WiFi Credentials to yours
-* Change the GPIO Pins under `spi` and `can` to your HW configuration
-* You may want to check/change the CAN IDs of the Manager, Kessel, etc. In order to do so, you have to change them in two places:
-  * `stiebeltools\heatingpump.h`:
-    ```c
-    static const CanMember CanMembers[] =
-    {
-    //  Name              CanId     ReadId          WriteId         ConfirmationID
-      { "ESPCLIENT"     , 0x700,    {0x00, 0x00},   {0x00, 0x00},   {0xE2, 0x00}}, //The ESP Home Client, thus no valid read/write IDs
-      { "KESSEL"        , 0x180,    {0x31, 0x00},   {0x30, 0x00},   {0x00, 0x00}},
-      { "MANAGER"       , 0x480,    {0x91, 0x00},   {0x90, 0x00},   {0x00, 0x00}},
-      { "HEIZMODUL"     , 0x500,    {0xA1, 0x00},   {0xA0, 0x00},   {0x00, 0x00}}
-    };
-    ```
-  * `heatingpump.yaml`: Look for these blocks in the lower part of the file
-    ```yaml
-    #########################################
-    #                                       #
-    #   HEIZMODUL Nachrichten               #
-    #                                       #
-    #########################################
-        - can_id: 0x500
-          then:
-            - lambda: |-
-                unsigned short canId = 500;
-    ```
+- [`s3.yaml`](s3.yaml) is the ESP32-S3 WPF10M configuration used for the v0.1.5 baseline. It is the configuration currently tested on the heat pump.
+- [`heatingpump_en_prod.yaml`](heatingpump_en_prod.yaml) is an older ESP32 configuration for different hardware. Its pins, network settings, and sensor set differ from `s3.yaml`.
+- The Elster table includes entries for several models. Many values have not been verified on WPF10M. Confirm an index against observed CAN traffic before using it to control the heat pump.
 
-### Home Assistant
-#### Entities and Helpers
-* place the file `packages/ha_stiebel_control.yaml` in your `/config/packages/` folder in Home Assistant.
-* add the package folder to your `configuration.yaml` under `homeassistant` (if not already set up)
+To install the S3 configuration in ESPHome Device Builder:
+
+1. Put `s3.yaml` and the `stiebeltools/` directory in the ESPHome configuration directory (usually `/config/esphome` in the app; the same directory is available as `/homeassistant/esphome` through the Home Assistant SSH app).
+2. Add `wifi_ssid`, `wifi_password`, `fallback_wifi_password`, `mqtt_username`, `mqtt_password`, and `ota_api_key` to your ESPHome `secrets.yaml`. The last key is used by the Home Assistant API encryption setting despite its name.
+3. Check the SPI pins, MCP2515 chip-select pin, CAN speed, broker address, and CAN ID filters against your hardware. The receive lambdas pass ESPHome's actual `can_id` to the decoder.
+4. Validate, compile, and install with ESPHome Device Builder. Copying source files alone does not update the firmware on the ESP.
+
+The read/write CAN members are defined in [`stiebeltools/heatingpump.h`](stiebeltools/heatingpump.h). The CAN receive handlers and Home Assistant sensor routing are in `s3.yaml`.
+
+## Home Assistant
+
+Copy [`packages/ha_stiebel_control.yaml`](packages/ha_stiebel_control.yaml) into `/config/packages/` if you use the included helpers, and enable packages in `configuration.yaml`:
+
 ```yaml
 homeassistant:
   packages: !include_dir_named packages
 ```
-#### Dashboard
-* Install the lovelace card [apexcharts-card](https://github.com/RomRider/apexcharts-card)
-* Install the lovelace card [lovelace-mushroom](https://github.com/piitaya/lovelace-mushroom)
-* Create a new Dashboard, switch to RAW mode and paste the content of `dashboard.yaml`. The result should look similar to this:
-![Dashboard Screenshot](assets/img/dashboard.jpg "Dashboard Screenshot")
 
-## Using
+The optional [`dashboard.yaml`](dashboard.yaml) uses the [ApexCharts](https://github.com/RomRider/apexcharts-card) and [Mushroom](https://github.com/piitaya/lovelace-mushroom) custom cards.
 
-### CAN Message MQTT Logging (NEW)
+## CAN messages over MQTT
 
-The system now publishes all CAN messages to MQTT, allowing you to store them in **any database** on **any server** in your network. This is useful for:
-- **Network-accessible storage** - Access from anywhere on your LAN
-- **Any database** - PostgreSQL, MySQL, InfluxDB, or SQLite
-- **Home Assistant integration** - Create automations based on CAN messages
-- **Long-term monitoring** - Unlimited storage on your server
-- **Real-time analysis** - Grafana dashboards, custom tools
+The S3 configuration publishes decoded CAN messages to `homeassistant/stiebel/can_raw/<CAN_ID_HEX>/<PARAMETER_NAME>` as JSON. Publishing is best effort with QoS 0: messages received while MQTT is disconnected or when publish fails are dropped. This stream is useful for diagnostics, but it is not a lossless record of CAN traffic.
 
-**Quick Setup:**
-1. Add MQTT configuration to your ESPHome YAML (see `mqtt_can_logger_addon.yaml`)
-2. Deploy to ESP32 - **Done!** Messages now published to MQTT
-3. (Optional) Run `mqtt_to_database.py` to store in database
+For optional database storage, copy [`mqtt_logger_config.yaml`](mqtt_logger_config.yaml) to `mqtt_logger_config.local.yaml`, fill in your own broker and database credentials, and run:
 
-**Example ESPHome Config:**
-```yaml
-mqtt:
-  broker: 192.168.1.100  # Your Home Assistant IP
-  username: !secret mqtt_username
-  password: !secret mqtt_password
-  id: mqtt_client
-
-esphome:
-  includes:
-    - stiebeltools/CanMessageMqttLogger.h
+```sh
+python3 -m pip install paho-mqtt pyyaml sqlalchemy psycopg2-binary
+python3 mqtt2db/mqtt_to_database.py --config mqtt_logger_config.local.yaml
 ```
 
-**Store in Database (Optional):**
-```bash
-# Edit configuration
-cp mqtt_logger_config.yaml my_config.yaml
-nano my_config.yaml
-
-# Install dependencies
-pip install paho-mqtt pyyaml sqlalchemy psycopg2-binary
-
-# Run logger
-python3 mqtt_to_database.py --config my_config.yaml
-```
-
-**MQTT Topics:**
-All messages published to: `homeassistant/stiebel/can_raw/<CAN_ID>/<PARAMETER_NAME>`
-
-**Documentation:**
-See `MQTT_CAN_LOGGER_GUIDE.md` for complete setup instructions, database options, Home Assistant integration, and Grafana dashboards.
-
-## Contributing
-
-Pull requests are welcome. For major changes, please open an issue first
-to discuss what you would like to change.
-
-Please make sure to update tests as appropriate.
+The local configuration filename is ignored by Git. Install the database driver for the database you choose; the command above includes the PostgreSQL driver.
 
 ## License
 
-[GPLv3] (https://www.gnu.org/licenses/gpl-3.0.en.html)
+[GPLv3](LICENSE)

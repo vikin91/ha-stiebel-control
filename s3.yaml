@@ -299,9 +299,8 @@ canbus:
       - can_id: 0x180
         then:
           - lambda: |-
-              unsigned short canId = 180;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
 
               if(strcmp(ei->EnglishName, "ERROR_MESSAGE") == 0) {
                 id(ERROR_MESSAGE).publish_state(std::stof(value));
@@ -339,9 +338,8 @@ canbus:
       - can_id: 0x301
         then:
           - lambda: |-
-              unsigned short canId = 301;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
 
               if(strcmp(ei->EnglishName, "FLOW_SETPOINT_TEMP") == 0) {
                 id(FLOW_SETPOINT_TEMP_HK1).publish_state(std::stof(value));
@@ -356,9 +354,8 @@ canbus:
       - can_id: 0x480
         then:
           - lambda: |-
-              unsigned short canId = 480;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
 
               if(strcmp(ei->EnglishName, "ERROR_MESSAGE") == 0) {
                 id(ERROR_MESSAGE_MANAGER).publish_state(std::stoi(value));
@@ -377,62 +374,52 @@ canbus:
       - can_id: 0
         then:
           - lambda: |-
-              unsigned short canId = 000;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
       - can_id: 0x100
         then:
           - lambda: |-
-              unsigned short canId = 100;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
       - can_id: 0x301
         then:
           - lambda: |-
-              unsigned short canId = 301;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
 
       - can_id: 0x509
         then:
           - lambda: |-
-              unsigned short canId = 509;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
       - can_id: 0x514
         then:
           - lambda: |-
-              unsigned short canId = 514;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
       - can_id: 0x601
         then:
           - lambda: |-
-              unsigned short canId = 601;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
       - can_id: 0x602
         then:
           - lambda: |-
-              unsigned short canId = 602;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
       - can_id: 0x603
         then:
           - lambda: |-
-              unsigned short canId = 603;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
       - can_id: 0x680
         then:
           - lambda: |-
-              unsigned short canId = 680;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
       - can_id: 0x700
         then:
           - lambda: |-
-              unsigned short canId = 700;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
 

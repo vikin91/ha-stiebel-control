@@ -6,15 +6,29 @@
 
 struct TestCanbus {
   bool send_data(uint32_t, bool, const std::vector<uint8_t> &) { return true; }
+  bool is_connected() const { return true; }
+  bool publish(const std::string &new_topic, const std::string &new_payload, int, bool) {
+    topic = new_topic;
+    payload = new_payload;
+    return true;
+  }
+  std::string topic;
+  std::string payload;
 };
 
 TestCanbus test_canbus;
 unsigned long millis() { return 0; }
 
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((format(printf, 2, 3)))
+#endif
+void test_log(const char *, const char *, ...) {}
+
+#define USE_MQTT
 #define id(name) test_canbus
-#define ESP_LOGI(...) ((void)0)
-#define ESP_LOGW(...) ((void)0)
-#define ESP_LOGD(...) ((void)0)
+#define ESP_LOGI(...) test_log(__VA_ARGS__)
+#define ESP_LOGW(...) test_log(__VA_ARGS__)
+#define ESP_LOGD(...) test_log(__VA_ARGS__)
 #include "../stiebeltools/heatingpump.h"
 
 int main() {
@@ -37,6 +51,10 @@ int main() {
       0x180, signal_value, {0xa0, 0x00, 0x0c, 0x00, 0xe8, 0x00, 0x00});
   assert(temperature->Index == 0x000c);
   assert(signal_value == "23.2");
+  assert(test_canbus.topic == "homeassistant/stiebel/can_raw/180/OUTSIDE_TEMP");
+  assert(test_canbus.payload.find("\"sender_can_id\":384") != std::string::npos);
+  assert(test_canbus.payload.find("\"sender_name\":\"PUMP\"") != std::string::npos);
+  assert(std::strcmp(getCanMemberName(180), "UNKNOWN") == 0);
 
   const auto *mode = processCanMessage(
       0x480, signal_value, {0xa0, 0x00, 0xfa, 0x01, 0x12, 0x02, 0x00});
