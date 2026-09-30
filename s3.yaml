@@ -326,6 +326,10 @@ canbus:
                 id(SOURCE_ACTUAL).publish_state(std::stof(value));
                 return;
               }
+              if(strcmp(ei->EnglishName, "AUXILIARY_BOILER_SETPOINT") == 0) {
+                id(AUXILIARY_BOILER_SETPOINT).publish_state(std::stof(value));
+                return;
+              }
               if(strcmp(ei->EnglishName, "HEATING_RETURN_ACTUAL") == 0) {
                 id(HEATING_RETURN_ACTUAL).publish_state(std::stof(value));
                 return;
