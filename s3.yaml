@@ -1,0 +1,438 @@
+esphome:
+  name: heatingpump
+  friendly_name: Heating Pump CAN Interface S3
+  project:
+    name: "canbus.stiebel-eltron-wpf10m"
+    version: "0.1.4"
+  includes:
+    - stiebeltools/ElsterTable.h
+    - stiebeltools/KElsterTable.cpp
+    - stiebeltools/KElsterTable.h
+    - stiebeltools/NUtils.h
+    - stiebeltools/NUtils.cpp
+    - stiebeltools/NTypes.h
+    - stiebeltools/heatingpump.h
+    - stiebeltools/CanMessageMqttLogger.h
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+
+mqtt:
+  broker: 192.168.178.11
+  port: 1883
+  username: !secret mqtt_username
+  password: !secret mqtt_password
+  id: ha_mqtt
+
+ota:
+  platform: esphome
+  encryption:
+  # id: my_ota
+  # password: !secret ota_password
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  output_power: 8.5dB
+    # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "S3 Fallback Hotspot"
+    password: !secret fallback_wifi_password
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret ota_api_key
+logger:
+  level: INFO
+captive_portal:
+
+sensor:
+  ### FROM PUMP
+  - platform: template
+    name: OUTSIDE_TEMP
+    id: OUTSIDE_TEMP
+    unit_of_measurement: °C
+    icon: mdi:thermometer-lines
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 10min
+    lambda: |-
+      readSignal(&CanMembers[cm_pump], GetElsterIndex("OUTSIDE_TEMP"));
+      return {};
+  - platform: template
+    name: RETURN_FLOW_INTERNAL_TEMP
+    id: RETURN_FLOW_INTERNAL_TEMP
+    unit_of_measurement: °C
+    icon: mdi:thermometer-lines
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 10min
+    lambda: |-
+      readSignal(&CanMembers[cm_pump], GetElsterIndex("RETURN_FLOW_INTERNAL_TEMP"));
+      return {};
+
+  # HK1 - Heating Circuit Basement
+  - platform: template
+    name: FLOW_INTERNAL_TEMP_HK1
+    id: FLOW_INTERNAL_TEMP_HK1
+    unit_of_measurement: °C
+    icon: mdi:thermometer-lines
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 10min
+    lambda: |-
+      readSignal(&CanMembers[cm_pump], GetElsterIndex("FLOW_INTERNAL_TEMP_HK1"));
+      return {};
+
+  # HK1 - Heating Circuit Basement
+  - platform: template
+    name: FLOW_SETPOINT_TEMP_HK1
+    id: FLOW_SETPOINT_TEMP_HK1
+    unit_of_measurement: °C
+    icon: mdi:thermometer-lines
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 60sec
+    lambda: |-
+      readSignal(&CanMembers[cm_fe7x], GetElsterIndex("FLOW_SETPOINT_TEMP"));
+      return {};
+
+  - platform: template
+    name: STORAGE_TANK_INTERNAL_TEMP
+    id: STORAGE_TANK_INTERNAL_TEMP
+    unit_of_measurement: °C
+    icon: mdi:thermometer-lines
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 10min
+    lambda: |-
+      readSignal(&CanMembers[cm_pump], GetElsterIndex("STORAGE_TANK_INTERNAL_TEMP"));
+      return {};
+
+  - platform: template
+    name: SOURCE_ACTUAL
+    id: SOURCE_ACTUAL
+    unit_of_measurement: °C
+    icon: mdi:thermometer-lines
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 10min
+    lambda: |-
+      readSignal(&CanMembers[cm_pump], GetElsterIndex("SOURCE_ACTUAL"));
+      return {};
+
+  - platform: template
+    name: AUXILIARY_BOILER_SETPOINT
+    id: AUXILIARY_BOILER_SETPOINT
+    unit_of_measurement: °C
+    icon: mdi:thermometer-lines
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 10min
+    lambda: |-
+      readSignal(&CanMembers[cm_pump], GetElsterIndex("AUXILIARY_BOILER_SETPOINT"));
+      return {};
+
+  - platform: template
+    name: STORAGE_TANK_SETPOINT_TEMP
+    id: STORAGE_TANK_SETPOINT_TEMP # Elster ID
+    unit_of_measurement: °C
+    icon: mdi:thermometer-lines
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 60sec
+    lambda: |-
+      readSignal(&CanMembers[cm_pump], GetElsterIndex("STORAGE_TANK_SETPOINT_TEMP"));
+      return {};
+
+  - platform: template
+    name: HEATING_RETURN_ACTUAL
+    id: HEATING_RETURN_ACTUAL
+    unit_of_measurement: °C
+    icon: mdi:thermometer-lines
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 10min
+    lambda: |-
+      readSignal(&CanMembers[cm_pump], GetElsterIndex("HEATING_RETURN_ACTUAL"));
+      return {};
+
+  # Température Ballon Tampon cible
+  - platform: template
+    name: BUFFER_SETPOINT
+    id: BUFFER_SETPOINT
+    unit_of_measurement: °C
+    icon: mdi:thermometer-lines
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 10min
+    lambda: |-
+      readSignal(&CanMembers[cm_pump], GetElsterIndex("BUFFER_SETPOINT"));
+      return {};
+
+  ## FROM FEK (can't read - just listen)
+  - platform: template
+    name: ROOM_INTERNAL_TEMP
+    id: ROOM_INTERNAL_TEMP
+    unit_of_measurement: °C
+    icon: mdi:thermometer-lines
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  # ✅ VERIFIED 2025-10-08: Bedroom temperature from CAN ID 480, elster_idx 244
+  # Multiplexed parameter, filters out -25504 (burst terminator) at processing level
+  - platform: template
+    name: BEDROOM_TEMP_HK2
+    id: BEDROOM_TEMP_HK2
+    unit_of_measurement: °C
+    icon: mdi:thermometer-lines
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: FLOW_INTERNAL_TEMP
+    id: FLOW_INTERNAL_TEMP
+    unit_of_measurement: °C
+    icon: mdi:thermometer-lines
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  - platform: template
+    name: BOILER_SET_TEMP
+    id: BOILER_SET_TEMP
+    unit_of_measurement: °C
+    icon: mdi:thermometer-lines
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+  # TEST
+
+  - platform: template
+    name: ERROR_MESSAGE
+    id: ERROR_MESSAGE
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 5min
+    lambda: |-
+      readSignal(&CanMembers[cm_pump], GetElsterIndex("ERROR_MESSAGE"));
+      return {};
+
+  - platform: template
+    name: ERROR_MESSAGE_MANAGER
+    id: ERROR_MESSAGE_MANAGER
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 5min
+    lambda: |-
+      readSignal(&CanMembers[cm_manager], GetElsterIndex("ERROR_MESSAGE"));
+      return {};
+
+binary_sensor:
+  # ✅ VERIFIED 2025-10-15: Compressor status from CAN ID 480, elster_idx 95
+  # Command message from Manager (0x480) to Pump (0x180)
+  # OFF: raw_value = 0 (a0 08 5f 00 00 00 00)
+  # ON:  raw_value = 512 (a0 08 5f 02 00 00 00)
+  - platform: template
+    name: COMPRESSOR_RUNNING
+    id: COMPRESSOR_RUNNING
+    device_class: running
+    icon: mdi:engine
+
+text_sensor:
+  - platform: template
+    name: DEVICE_ID_MANAGER
+    id: GERAETE_ID_MANAGER
+    icon: mdi:description
+  - platform: template
+    name: CAN Signal
+    id: received_can_signal
+    icon: mdi:description
+
+switch:
+  # Restart ESP device
+  - platform: restart
+    name: "WP ESP restart"
+    id: restart_esp_heatpump
+
+time:
+  - platform: sntp
+    on_time:
+      - seconds: 0
+        minutes: 0
+        hours: 4
+        days_of_week: 1
+        then:
+          - switch.toggle: restart_esp_heatpump
+
+spi:
+  id: McpSpi
+  clk_pin: GPIO18 # SCK
+  mosi_pin: GPIO17 # SI
+  miso_pin: GPIO16 # SO
+
+
+canbus:
+  - platform: mcp2515
+    id: my_mcp2515
+    spi_id: McpSpi
+    cs_pin: GPIO4 # CS
+    can_id: 0x680
+    use_extended_id: false
+    bit_rate: 20kbps
+    on_frame:
+      - can_id: 0x180
+        then:
+          - lambda: |-
+              unsigned short canId = 180;
+              std::string value;
+              const ElsterIndex* ei = processCanMessage(canId, value, x);
+
+              if(ei->EnglishName == "ERROR_MESSAGE") {
+                id(ERROR_MESSAGE).publish_state(std::stof(value));
+                return;
+              }
+              if(ei->EnglishName == "OUTSIDE_TEMP") {
+                id(OUTSIDE_TEMP).publish_state(std::stof(value));
+                return;
+              }
+              if(ei->EnglishName == "RETURN_FLOW_INTERNAL_TEMP") {
+                id(RETURN_FLOW_INTERNAL_TEMP).publish_state(std::stof(value));
+                return;
+              }
+              if(ei->EnglishName == "FLOW_INTERNAL_TEMP_HK1") {
+                id(FLOW_INTERNAL_TEMP_HK1).publish_state(std::stof(value));
+                return;
+              }
+              if(ei->EnglishName == "STORAGE_TANK_INTERNAL_TEMP") {
+                id(STORAGE_TANK_INTERNAL_TEMP).publish_state(std::stof(value) + 3);
+                return;
+              }
+              if(ei->EnglishName == "SOURCE_ACTUAL") {
+                id(SOURCE_ACTUAL).publish_state(std::stof(value));
+                return;
+              }
+              if(ei->EnglishName == "HEATING_RETURN_ACTUAL") {
+                id(HEATING_RETURN_ACTUAL).publish_state(std::stof(value));
+                return;
+              }
+              if(ei->EnglishName == "BUFFER_SETPOINT") {
+                id(BUFFER_SETPOINT).publish_state(std::stof(value));
+                return;
+              }
+
+      - can_id: 0x301
+        then:
+          - lambda: |-
+              unsigned short canId = 301;
+              std::string value;
+              const ElsterIndex* ei = processCanMessage(canId, value, x);
+
+              if(ei->EnglishName == "FLOW_SETPOINT_TEMP") {
+                id(FLOW_SETPOINT_TEMP_HK1).publish_state(std::stof(value));
+                return;
+              }
+              if(ei->EnglishName == "STORAGE_TANK_SETPOINT_TEMP") {
+                id(STORAGE_TANK_SETPOINT_TEMP).publish_state(std::stof(value));
+                return;
+              }
+
+
+      - can_id: 0x480
+        then:
+          - lambda: |-
+              unsigned short canId = 480;
+              std::string value;
+              const ElsterIndex* ei = processCanMessage(canId, value, x);
+
+              if(ei->EnglishName == "ERROR_MESSAGE") {
+                id(ERROR_MESSAGE_MANAGER).publish_state(std::stoi(value));
+                return;
+              }
+
+              // ✅ VERIFIED 2025-10-15: Compressor start command (elster_idx 95)
+              // Manager sends command to Pump: OFF=0, ON=512
+              if(ei->Index == 95) {
+                int raw_value = std::stoi(value);
+                bool compressor_on = (raw_value > 0);
+                id(COMPRESSOR_RUNNING).publish_state(compressor_on);
+                return;
+              }
+
+      - can_id: 0
+        then:
+          - lambda: |-
+              unsigned short canId = 000;
+              std::string value;
+              const ElsterIndex* ei = processCanMessage(canId, value, x);
+      - can_id: 0x100
+        then:
+          - lambda: |-
+              unsigned short canId = 100;
+              std::string value;
+              const ElsterIndex* ei = processCanMessage(canId, value, x);
+      - can_id: 0x301
+        then:
+          - lambda: |-
+              unsigned short canId = 301;
+              std::string value;
+              const ElsterIndex* ei = processCanMessage(canId, value, x);
+
+      - can_id: 0x509
+        then:
+          - lambda: |-
+              unsigned short canId = 509;
+              std::string value;
+              const ElsterIndex* ei = processCanMessage(canId, value, x);
+      - can_id: 0x514
+        then:
+          - lambda: |-
+              unsigned short canId = 514;
+              std::string value;
+              const ElsterIndex* ei = processCanMessage(canId, value, x);
+      - can_id: 0x601
+        then:
+          - lambda: |-
+              unsigned short canId = 601;
+              std::string value;
+              const ElsterIndex* ei = processCanMessage(canId, value, x);
+      - can_id: 0x602
+        then:
+          - lambda: |-
+              unsigned short canId = 602;
+              std::string value;
+              const ElsterIndex* ei = processCanMessage(canId, value, x);
+      - can_id: 0x603
+        then:
+          - lambda: |-
+              unsigned short canId = 603;
+              std::string value;
+              const ElsterIndex* ei = processCanMessage(canId, value, x);
+      - can_id: 0x680
+        then:
+          - lambda: |-
+              unsigned short canId = 680;
+              std::string value;
+              const ElsterIndex* ei = processCanMessage(canId, value, x);
+      - can_id: 0x700
+        then:
+          - lambda: |-
+              unsigned short canId = 700;
+              std::string value;
+              const ElsterIndex* ei = processCanMessage(canId, value, x);
+
