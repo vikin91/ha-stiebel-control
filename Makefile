@@ -19,6 +19,7 @@ TEST_SRCS     = tests/catch2/catch_amalgamated.cpp \
                 tests/test_sg_ready.cpp
 TEST_EXTRA    = tests/test_nutils.cpp \
                 tests/test_kelster.cpp \
+                tests/test_wpf10m_protocol.cpp \
                 tests/test_can_logic.cpp \
                 tests/signal_requests_stub.cpp
 ELSTER_SRCS   = esphome/ha-stiebel-control/elster/NUtils.cpp \

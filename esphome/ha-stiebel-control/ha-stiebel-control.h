@@ -415,7 +415,7 @@ const ElsterIndex *processCanMessage(const std::vector<uint8_t> &msg, uint32_t c
     const ElsterIndex *ei;
     uint8_t byte1;
     uint8_t byte2;
-    char charValue[16];
+    char charValue[32];
 
     if (msg[2] == 0xfa)
     {
@@ -433,13 +433,13 @@ const ElsterIndex *processCanMessage(const std::vector<uint8_t> &msg, uint32_t c
     switch (ei->Type)
     {
     case et_double_val:
-        SetDoubleType(charValue, ei->Type, static_cast<double>(byte2 + (byte1 << 8)));
+        SetDoubleType(charValue, sizeof(charValue), ei->Type, static_cast<double>(byte2 + (byte1 << 8)));
         break;
     case et_triple_val:
-        SetDoubleType(charValue, ei->Type, static_cast<double>(byte2 + (byte1 << 8)));
+        SetDoubleType(charValue, sizeof(charValue), ei->Type, static_cast<double>(byte2 + (byte1 << 8)));
         break;
     default:
-        SetValueType(charValue, ei->Type, static_cast<int>(byte2 + (byte1 << 8)));
+        SetValueType(charValue, sizeof(charValue), ei->Type, static_cast<int>(byte2 + (byte1 << 8)));
         break;
     }
 

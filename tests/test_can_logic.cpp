@@ -14,6 +14,26 @@
 // via its own includes. The elster .cpp files are compiled as separate objects.
 #include "../esphome/ha-stiebel-control/ha-stiebel-control.h"
 
+// Run the model-specific routing header in the same translation unit as the
+// upstream core, which defines functions directly in its header.
+static FakeSensor wpf10m_sensors[14];
+#define OUTSIDE_TEMP wpf10m_sensors[0]
+#define RETURN_FLOW_INTERNAL_TEMP wpf10m_sensors[1]
+#define FLOW_INTERNAL_TEMP_HK1 wpf10m_sensors[2]
+#define FLOW_SETPOINT_TEMP_HK1 wpf10m_sensors[3]
+#define STORAGE_TANK_INTERNAL_TEMP wpf10m_sensors[4]
+#define SOURCE_ACTUAL wpf10m_sensors[5]
+#define AUXILIARY_BOILER_SETPOINT wpf10m_sensors[6]
+#define STORAGE_TANK_SETPOINT_TEMP wpf10m_sensors[7]
+#define STORAGE_TANK_SETPOINT_TEMP_PUMP wpf10m_sensors[8]
+#define HEATING_RETURN_ACTUAL wpf10m_sensors[9]
+#define BUFFER_SETPOINT wpf10m_sensors[10]
+#define ERROR_MESSAGE wpf10m_sensors[11]
+#define ERROR_MESSAGE_MANAGER wpf10m_sensors[12]
+#define COMPRESSOR_RUNNING wpf10m_sensors[13]
+
+#include "../esphome/ha-stiebel-control/wpf10m_frame.h"
+
 // ============================================================================
 // generate_read_id / generate_write_id
 // ============================================================================
@@ -1075,4 +1095,24 @@ TEST_CASE("i18n: named ElsterTable signals have non-empty friendlyName via LNAME
         if (ei->hasMetadata && ei->friendlyName)
             CHECK(std::string(ei->friendlyName).length() > 0);
     }
+}
+
+TEST_CASE("WPF10M routes compressor and dual storage setpoint by sender", "[wpf10m]") {
+    processWpf10mFrame(0x480, {0xA0, 0x08, 0x5F, 0x02, 0x00, 0x00, 0x00});
+    CHECK(COMPRESSOR_RUNNING.last_state == 1.0f);
+    processWpf10mFrame(0x480, {0xA0, 0x08, 0x5F, 0x00, 0x00, 0x00, 0x00});
+    CHECK(COMPRESSOR_RUNNING.last_state == 0.0f);
+
+    processWpf10mFrame(0x301, {0x61, 0x01, 0x03, 0x01, 0x2C, 0x00, 0x00});
+    CHECK(STORAGE_TANK_SETPOINT_TEMP.last_state == 30.0f);
+    processWpf10mFrame(0x180, {0x31, 0x00, 0x03, 0x01, 0x90, 0x00, 0x00});
+    CHECK(STORAGE_TANK_SETPOINT_TEMP_PUMP.last_state == 40.0f);
+    CHECK(STORAGE_TANK_SETPOINT_TEMP.last_state == 30.0f);
+}
+
+TEST_CASE("WPF10M retains the storage correction and signed temperatures", "[wpf10m]") {
+    processWpf10mFrame(0x180, {0x31, 0x00, 0x0E, 0x01, 0xF4, 0x00, 0x00});
+    CHECK(STORAGE_TANK_INTERNAL_TEMP.last_state == 53.0f);
+    processWpf10mFrame(0x180, {0x31, 0x00, 0x0C, 0xFF, 0xCE, 0x00, 0x00});
+    CHECK(OUTSIDE_TEMP.last_state == -5.0f);
 }

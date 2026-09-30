@@ -1,0 +1,47 @@
+# Trial firmware for the deployed ESP32-S3 + MCP2515 WPF10M installation.
+# Based on upstream v2.1.1; keep the fork's v0.1.6 firmware as the rollback point.
+# Review the new upstream writable controls and poll list before installing.
+substitutions:
+  device_name: heatingpump
+  friendly_name: Heating Pump CAN Interface S3
+  device_model: "wpf10m"
+  language: "EN"
+  can_clk_pin: GPIO18
+  can_mosi_pin: GPIO17
+  can_miso_pin: GPIO16
+  can_cs_pin: GPIO4
+  can_id_pc: "0x680"
+
+packages:
+  can: !include ha-stiebel-control/can_mcp2515_wpf10m_local.yaml
+  base: !include ha-stiebel-control/common.yaml
+  sensors: !include ha-stiebel-control/wpf10m_local.yaml
+
+esphome:
+  friendly_name: Heating Pump CAN Interface S3
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+
+# Match the secrets already used by the working s3.yaml configuration.
+api:
+  encryption:
+    key: !secret ota_api_key
+
+ota:
+  platform: esphome
+  password: !remove
+  encryption:
+
+mqtt:
+  broker: 192.168.178.11
+  port: 1883
+
+wifi:
+  use_address: heatingpump.local
+  output_power: 8.5dB
+  ap:
+    ssid: "S3 Fallback Hotspot"
+    password: !secret fallback_wifi_password

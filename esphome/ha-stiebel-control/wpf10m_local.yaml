@@ -1,0 +1,157 @@
+# Local WPF10M mapping carried from the deployed s3.yaml configuration.
+# The upstream WPF10 model remains available unchanged in wpf10.yaml.
+esphome:
+  includes:
+    - ha-stiebel-control/signal_requests_wpf10m_local.h
+    - ha-stiebel-control/wpf10m_protocol.h
+    - ha-stiebel-control/wpf10m_frame.h
+
+sensor:
+  - platform: template
+    name: OUTSIDE_TEMP
+    id: OUTSIDE_TEMP
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+  - platform: template
+    name: RETURN_FLOW_INTERNAL_TEMP
+    id: RETURN_FLOW_INTERNAL_TEMP
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+  # 0x02CA is still named MATERIALNUMMER_HIGH in upstream; meaning unverified.
+  - platform: template
+    name: FLOW_INTERNAL_TEMP_HK1
+    id: FLOW_INTERNAL_TEMP_HK1
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+  - platform: template
+    name: FLOW_SETPOINT_TEMP_HK1
+    id: FLOW_SETPOINT_TEMP_HK1
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+  - platform: template
+    name: STORAGE_TANK_INTERNAL_TEMP
+    id: STORAGE_TANK_INTERNAL_TEMP
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+  - platform: template
+    name: SOURCE_ACTUAL
+    id: SOURCE_ACTUAL
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+  - platform: template
+    name: AUXILIARY_BOILER_SETPOINT
+    id: AUXILIARY_BOILER_SETPOINT
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+  - platform: template
+    name: STORAGE_TANK_SETPOINT_TEMP
+    id: STORAGE_TANK_SETPOINT_TEMP
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+  - platform: template
+    name: STORAGE_TANK_SETPOINT_TEMP_PUMP
+    id: STORAGE_TANK_SETPOINT_TEMP_PUMP
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+  # The old English alias says return, but WPVORLAUFIST suggests flow.
+  - platform: template
+    name: HEATING_RETURN_ACTUAL
+    id: HEATING_RETURN_ACTUAL
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+  - platform: template
+    name: BUFFER_SETPOINT
+    id: BUFFER_SETPOINT
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+  - platform: template
+    name: ERROR_MESSAGE
+    id: ERROR_MESSAGE
+    state_class: measurement
+    accuracy_decimals: 0
+  - platform: template
+    name: ERROR_MESSAGE_MANAGER
+    id: ERROR_MESSAGE_MANAGER
+    state_class: measurement
+    accuracy_decimals: 0
+
+  # These were declared but not connected to CAN values in s3.yaml.
+  - platform: template
+    name: ROOM_INTERNAL_TEMP
+    id: ROOM_INTERNAL_TEMP
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+  - platform: template
+    name: FLOW_INTERNAL_TEMP
+    id: FLOW_INTERNAL_TEMP
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+  - platform: template
+    name: BOILER_SET_TEMP
+    id: BOILER_SET_TEMP
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
+binary_sensor:
+  - platform: template
+    name: COMPRESSOR_RUNNING
+    id: COMPRESSOR_RUNNING
+    device_class: running
+    icon: mdi:engine
+
+text_sensor:
+  - platform: template
+    name: DEVICE_ID_MANAGER
+    id: GERAETE_ID_MANAGER
+  - platform: template
+    name: CAN Signal
+    id: received_can_signal
+
+# Preserve the two old error reads despite upstream's generic blacklist.
+interval:
+  - interval: 5min
+    then:
+      - lambda: |-
+          readSignal(&CanMembers[cm_kessel], GetElsterIndex("FEHLERMELDUNG"));
+      - delay: 1s
+      - lambda: |-
+          readSignal(&CanMembers[cm_manager], GetElsterIndex("FEHLERMELDUNG"));
+
+# Preserve the weekly restart from the working S3 configuration.
+time:
+  - platform: sntp
+    on_time:
+      - seconds: 0
+        minutes: 0
+        hours: 4
+        days_of_week: 1
+        then:
+          - button.press: restart_button
