@@ -10,10 +10,12 @@ struct TestCanbus {
   bool publish(const std::string &new_topic, const std::string &new_payload, int, bool) {
     topic = new_topic;
     payload = new_payload;
+    ++publish_count;
     return true;
   }
   std::string topic;
   std::string payload;
+  unsigned publish_count = 0;
 };
 
 TestCanbus test_canbus;
@@ -55,6 +57,12 @@ int main() {
   assert(test_canbus.payload.find("\"sender_can_id\":384") != std::string::npos);
   assert(test_canbus.payload.find("\"sender_name\":\"PUMP\"") != std::string::npos);
   assert(std::strcmp(getCanMemberName(180), "UNKNOWN") == 0);
+  assert(rawBytesToHex({0x00, 0xa0, 0xff}) == "00 a0 ff");
+
+  const unsigned published_before_oversized_value = test_canbus.publish_count;
+  publishCanMessageToMqtt(0x180, {0xa0, 0x00, 0x0c, 0x00, 0xe8, 0x00, 0x00},
+                          temperature, std::string(600, 'x'), 232);
+  assert(test_canbus.publish_count == published_before_oversized_value);
 
   const auto *mode = processCanMessage(
       0x480, signal_value, {0xa0, 0x00, 0xfa, 0x01, 0x12, 0x02, 0x00});
