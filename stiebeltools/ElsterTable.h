@@ -3620,7 +3620,6 @@ static const ElsterIndex ElsterTable[] =
         {"WP_PUMPENSTATUS", 0xfdad, et_little_endian, "PUMP_STATUS"},
         {"WP_STATUS", 0xfdae, et_little_endian, "WP_STATUS"},
         {"QUELLE", 0xfdaf, et_little_endian, "SOURCE"},
-        {"DAUERLAUF_PUFFERLADEPUMPE", 0xfdaf, et_little_endian, "CONTINUOUS_BUFFER-LOADING_PUMP"},
         {"SCHALTWERKDYNAMIKZEIT", 0xfdb0, et_little_endian, "SYSTEM-DYNAMICS_TIME"},
         {"STILLSTANDZEIT", 0xfdb1, et_little_endian, "STANDSTILL_TIME"},
         {"PUMPENZYKLEN", 0xfdb2, et_little_endian, "PUMP_CYCLES"},
