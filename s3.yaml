@@ -3,7 +3,7 @@ esphome:
   friendly_name: Heating Pump CAN Interface S3
   project:
     name: "canbus.stiebel-eltron-wpf10m"
-    version: "0.1.5"
+    version: "0.1.6"
   includes:
     - stiebeltools/ElsterTable.h
     - stiebeltools/KElsterTable.cpp
@@ -155,6 +155,17 @@ sensor:
       readSignal(&CanMembers[cm_pump], GetElsterIndex("STORAGE_TANK_SETPOINT_TEMP"));
       return {};
 
+  # Comparison only: the existing setpoint sensor continues to use FE7X (0x301).
+  # This sensor uses the reply to the existing pump read request above.
+  - platform: template
+    name: STORAGE_TANK_SETPOINT_TEMP_PUMP
+    id: STORAGE_TANK_SETPOINT_TEMP_PUMP
+    unit_of_measurement: °C
+    icon: mdi:thermometer-lines
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+
   - platform: template
     name: HEATING_RETURN_ACTUAL
     id: HEATING_RETURN_ACTUAL
@@ -192,8 +203,8 @@ sensor:
     state_class: measurement
     accuracy_decimals: 1
 
-  # ✅ VERIFIED 2025-10-08: Bedroom temperature from CAN ID 480, elster_idx 244
-  # Multiplexed parameter, filters out -25504 (burst terminator) at processing level
+  # EXPERIMENTAL: possible bedroom temperature in multiplexed manager index 0x00F4.
+  # The conversion and filter below have not been verified on this WPF10.
   - platform: template
     name: BEDROOM_TEMP_HK2
     id: BEDROOM_TEMP_HK2
@@ -299,9 +310,8 @@ canbus:
       - can_id: 0x180
         then:
           - lambda: |-
-              unsigned short canId = 180;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
 
               if(strcmp(ei->EnglishName, "ERROR_MESSAGE") == 0) {
                 id(ERROR_MESSAGE).publish_state(std::stof(value));
@@ -327,6 +337,14 @@ canbus:
                 id(SOURCE_ACTUAL).publish_state(std::stof(value));
                 return;
               }
+              if(strcmp(ei->EnglishName, "AUXILIARY_BOILER_SETPOINT") == 0) {
+                id(AUXILIARY_BOILER_SETPOINT).publish_state(std::stof(value));
+                return;
+              }
+              if(strcmp(ei->EnglishName, "STORAGE_TANK_SETPOINT_TEMP") == 0) {
+                id(STORAGE_TANK_SETPOINT_TEMP_PUMP).publish_state(std::stof(value));
+                return;
+              }
               if(strcmp(ei->EnglishName, "HEATING_RETURN_ACTUAL") == 0) {
                 id(HEATING_RETURN_ACTUAL).publish_state(std::stof(value));
                 return;
@@ -339,9 +357,8 @@ canbus:
       - can_id: 0x301
         then:
           - lambda: |-
-              unsigned short canId = 301;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
 
               if(strcmp(ei->EnglishName, "FLOW_SETPOINT_TEMP") == 0) {
                 id(FLOW_SETPOINT_TEMP_HK1).publish_state(std::stof(value));
@@ -356,12 +373,24 @@ canbus:
       - can_id: 0x480
         then:
           - lambda: |-
-              unsigned short canId = 480;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
 
               if(strcmp(ei->EnglishName, "ERROR_MESSAGE") == 0) {
                 id(ERROR_MESSAGE_MANAGER).publish_state(std::stoi(value));
+                return;
+              }
+
+              // EXPERIMENTAL: older observations suggest manager index 0x00F4
+              // multiplexes several values. 0x02 in the high value byte may
+              // identify bedroom temperature: (raw - 400) / 10 degrees C.
+              // Ignore other slots, including the observed -25504 marker.
+              if(ei->Index == 0x00f4 && x.size() >= 5 && x[3] == 0x02) {
+                const int raw = (static_cast<int>(x[3]) << 8) | x[4];
+                const float temperature = (raw - 400) / 10.0f;
+                if(temperature >= 5.0f && temperature <= 35.0f) {
+                  id(BEDROOM_TEMP_HK2).publish_state(temperature);
+                }
                 return;
               }
 
@@ -377,62 +406,46 @@ canbus:
       - can_id: 0
         then:
           - lambda: |-
-              unsigned short canId = 000;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
       - can_id: 0x100
         then:
           - lambda: |-
-              unsigned short canId = 100;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
-      - can_id: 0x301
-        then:
-          - lambda: |-
-              unsigned short canId = 301;
-              std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
 
       - can_id: 0x509
         then:
           - lambda: |-
-              unsigned short canId = 509;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
       - can_id: 0x514
         then:
           - lambda: |-
-              unsigned short canId = 514;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
       - can_id: 0x601
         then:
           - lambda: |-
-              unsigned short canId = 601;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
       - can_id: 0x602
         then:
           - lambda: |-
-              unsigned short canId = 602;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
       - can_id: 0x603
         then:
           - lambda: |-
-              unsigned short canId = 603;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
       - can_id: 0x680
         then:
           - lambda: |-
-              unsigned short canId = 680;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);
       - can_id: 0x700
         then:
           - lambda: |-
-              unsigned short canId = 700;
               std::string value;
-              const ElsterIndex* ei = processCanMessage(canId, value, x);
-
+              const ElsterIndex* ei = processCanMessage(static_cast<unsigned short>(can_id), value, x);

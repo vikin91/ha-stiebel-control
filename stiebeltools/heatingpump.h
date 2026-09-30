@@ -87,7 +87,9 @@ const ElsterIndex *processCanMessage(unsigned short can_id, std::string &signalV
     if ((msg[0] != 0xa0 && msg[0] != 0xa1 && msg[0] != 0x60 && msg[0] != 0x61) ||
         (msg[1] != 0x00 && msg[1] != 0x01 && msg[1] != 0x72 && msg[1] != 0x73 && msg[1] != 0x79 && msg[1] != 0x08 && msg[1] != 0xa0 && msg[1] != 0xa1)) {
         ESP_LOGD("processCanMessage()", "Possibly non-Stiebel message format: %02x %02x %02x %02x %02x %02x %02x",
-                 msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6]);
+                 static_cast<unsigned>(msg[0]), static_cast<unsigned>(msg[1]), static_cast<unsigned>(msg[2]),
+                 static_cast<unsigned>(msg[3]), static_cast<unsigned>(msg[4]), static_cast<unsigned>(msg[5]),
+                 static_cast<unsigned>(msg[6]));
     }
 
   const ElsterIndex *ei;
@@ -137,7 +139,10 @@ const ElsterIndex *processCanMessage(unsigned short can_id, std::string &signalV
             unknownIndex = int(msg[2]);
         }
         ESP_LOGW("processCanMessage()", "%d:\tUNKNOWN_INDEX_0x%04X:\t%s\t(raw: %02x %02x %02x %02x %02x %02x %02x)",
-                 can_id, unknownIndex, charValue, msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6]);
+                 static_cast<int>(can_id), static_cast<unsigned>(unknownIndex), charValue,
+                 static_cast<unsigned>(msg[0]), static_cast<unsigned>(msg[1]), static_cast<unsigned>(msg[2]),
+                 static_cast<unsigned>(msg[3]), static_cast<unsigned>(msg[4]), static_cast<unsigned>(msg[5]),
+                 static_cast<unsigned>(msg[6]));
         
         // Log common unknown indices that might be from older devices needing ElsterTable updates
         /*
@@ -169,7 +174,7 @@ const ElsterIndex *processCanMessage(unsigned short can_id, std::string &signalV
     signalValue = (std::string)charValue;
     
     // Publish to MQTT (non-blocking, failures won't affect CAN processing)
-    publishCanMessageToMqtt(can_id, msg, ei, signalValue, byte1, byte2, rawValue);
+    publishCanMessageToMqtt(can_id, msg, ei, signalValue, rawValue);
     
     return ei;
 }
@@ -202,9 +207,13 @@ void readSignal(const CanMember *member, const ElsterIndex *ei)
                              0x00});
   }
 
-  char logmsg[255];
-  sprintf(logmsg, "READ \"%s\" (0x%04x) FROM %s (0x%02x {0x%02x, 0x%02x}): %02x, %02x, %02x, %02x, %02x, %02x, %02x", ei->EnglishName, ei->Index, member->Name, member->CanId, member->ReadId[0], member->ReadId[1], data[0], data[1], data[2], data[3], data[4], data[5], data[6]);
-  ESP_LOGI("readSignal()", "%s", logmsg);
+  ESP_LOGI("readSignal()", "READ \"%s\" (0x%04x) FROM %s (0x%03x {0x%02x, 0x%02x}): %02x, %02x, %02x, %02x, %02x, %02x, %02x",
+           ei->EnglishName, static_cast<unsigned>(ei->Index), member->Name,
+           static_cast<unsigned>(member->CanId), static_cast<unsigned>(member->ReadId[0]),
+           static_cast<unsigned>(member->ReadId[1]), static_cast<unsigned>(data[0]),
+           static_cast<unsigned>(data[1]), static_cast<unsigned>(data[2]),
+           static_cast<unsigned>(data[3]), static_cast<unsigned>(data[4]),
+           static_cast<unsigned>(data[5]), static_cast<unsigned>(data[6]));
 
   id(my_mcp2515).send_data(CanMembers[cm_espclient].CanId, use_extended_id, data);
 
@@ -240,9 +249,13 @@ void writeSignal(const CanMember *member, const ElsterIndex *ei, const char *&st
                              ((uint8_t)(writeValue - ((writeValue >> 8) << 8)))});
   }
 
-  char logmsg[120];
-  sprintf(logmsg, "WRITE \"%s\" (0x%04x): \"%d\" TO: %s (0x%02x {0x%02x, 0x%02x}): %02x, %02x, %02x, %02x, %02x, %02x, %02x", ei->Name, ei->Index, writeValue, member->Name, member->CanId, member->ReadId[0], member->ReadId[1], data[0], data[1], data[2], data[3], data[4], data[5], data[6]);
-  ESP_LOGI("writeSignal()", "%s", logmsg);
+  ESP_LOGI("writeSignal()", "WRITE \"%s\" (0x%04x): \"%d\" TO: %s (0x%03x {0x%02x, 0x%02x}): %02x, %02x, %02x, %02x, %02x, %02x, %02x",
+           ei->Name, static_cast<unsigned>(ei->Index), writeValue, member->Name,
+           static_cast<unsigned>(member->CanId), static_cast<unsigned>(member->WriteId[0]),
+           static_cast<unsigned>(member->WriteId[1]), static_cast<unsigned>(data[0]),
+           static_cast<unsigned>(data[1]), static_cast<unsigned>(data[2]),
+           static_cast<unsigned>(data[3]), static_cast<unsigned>(data[4]),
+           static_cast<unsigned>(data[5]), static_cast<unsigned>(data[6]));
 
   id(my_mcp2515).send_data(CanMembers[cm_espclient].CanId, use_extended_id, data);
 
