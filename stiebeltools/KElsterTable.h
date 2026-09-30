@@ -20,13 +20,14 @@
 
   #define KElsterTable_H
 
+  #include <stddef.h>
   #include "ElsterTable.h"
 
   const ElsterIndex * GetElsterIndex(unsigned short Index);
   const ElsterIndex * GetElsterIndex(const char * str);
   ElsterType GetElsterType(const char * str);
-  void SetValueType(char * Val, unsigned char Type, unsigned short Value);
-  void SetDoubleType(char * Val, unsigned char Type, double Value);
+  void SetValueType(char * Val, size_t ValSize, unsigned char Type, unsigned short Value);
+  void SetDoubleType(char * Val, size_t ValSize, unsigned char Type, double Value);
   const char * ElsterTypeToName(unsigned Type);
   int TranslateString(const char * & str, unsigned char elster_type);
 
