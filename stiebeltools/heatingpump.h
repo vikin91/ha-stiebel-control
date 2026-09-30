@@ -17,6 +17,7 @@
 
 #if !defined(heatingpump_H)
 #define heatingpump_H
+#include <cstdlib>
 #include "ElsterTable.h"
 #include "KElsterTable.h"
 #include "CanMessageMqttLogger.h"
@@ -92,7 +93,7 @@ const ElsterIndex *processCanMessage(unsigned short can_id, std::string &signalV
   const ElsterIndex *ei;
   unsigned char byte1;
   unsigned char byte2;
-  char charValue[16];
+  char charValue[32];
 
   if (int(msg[2]) == 0xfa)
   {
@@ -117,13 +118,13 @@ const ElsterIndex *processCanMessage(unsigned short can_id, std::string &signalV
     switch (ei->Type)
     {
     case et_double_val:
-        SetDoubleType(charValue, ei->Type, double(rawValue));
+        SetDoubleType(charValue, sizeof(charValue), ei->Type, double(rawValue));
         break;
     case et_triple_val:
-        SetDoubleType(charValue, ei->Type, double(rawValue));
+        SetDoubleType(charValue, sizeof(charValue), ei->Type, double(rawValue));
         break;
     default:
-        SetValueType(charValue, ei->Type, rawValue);
+        SetValueType(charValue, sizeof(charValue), ei->Type, rawValue);
         break;
     }
 
@@ -148,16 +149,19 @@ const ElsterIndex *processCanMessage(unsigned short can_id, std::string &signalV
     } else {
         ESP_LOGI("processCanMessage()", "%d:\t%s:\t%s\t(%s)", can_id, ei->EnglishName, charValue, ElsterTypeStr[ei->Type]);
         
-        // Enhanced validation for older device values (Jürg's protocol ranges)
-        double value = std::stod(charValue);
-        if (strstr(ei->EnglishName, "TEMP")) {
-            if (value < -50.0 || value > 150.0) {
-                ESP_LOGW("processCanMessage()", "Temperature out of range for %s: %s (possible older device index mismatch)", 
-                        ei->EnglishName, charValue);
-            }
-        } else if (strstr(ei->EnglishName, "ACTIVE") || strstr(ei->EnglishName, "STATUS")) {
-            if (value != 0.0 && value != 1.0 && (value < -10 || value > 1000)) {
-                ESP_LOGW("processCanMessage()", "Suspicious status value for %s: %s", ei->EnglishName, charValue);
+        // Only numeric Elster values can be checked against numeric ranges.
+        char *end = nullptr;
+        double value = std::strtod(charValue, &end);
+        if (end != charValue && *end == '\0') {
+            if (strstr(ei->EnglishName, "TEMP")) {
+                if (value < -50.0 || value > 150.0) {
+                    ESP_LOGW("processCanMessage()", "Temperature out of range for %s: %s (possible older device index mismatch)",
+                            ei->EnglishName, charValue);
+                }
+            } else if (strstr(ei->EnglishName, "ACTIVE") || strstr(ei->EnglishName, "STATUS")) {
+                if (value != 0.0 && value != 1.0 && (value < -10 || value > 1000)) {
+                    ESP_LOGW("processCanMessage()", "Suspicious status value for %s: %s", ei->EnglishName, charValue);
+                }
             }
         }
     }

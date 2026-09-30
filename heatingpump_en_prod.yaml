@@ -581,59 +581,59 @@ canbus:
               std::string value;
               const ElsterIndex* ei = processCanMessage(canId, value, x);
 
-              if(ei->EnglishName == "ERROR_MESSAGE") {
+              if(strcmp(ei->EnglishName, "ERROR_MESSAGE") == 0) {
                 id(ERROR_MESSAGE).publish_state(std::stof(value));
                 return;
               }
-              if(ei->EnglishName == "OUTSIDE_TEMP") {
+              if(strcmp(ei->EnglishName, "OUTSIDE_TEMP") == 0) {
                 id(OUTSIDE_TEMP).publish_state(std::stof(value));
                 return;
               }
-              if(ei->EnglishName == "RETURN_FLOW_INTERNAL_TEMP") {
+              if(strcmp(ei->EnglishName, "RETURN_FLOW_INTERNAL_TEMP") == 0) {
                 id(RETURN_FLOW_INTERNAL_TEMP).publish_state(std::stof(value));
                 return;
               }
-              if(ei->EnglishName == "FLOW_INTERNAL_TEMP_HK1") {
+              if(strcmp(ei->EnglishName, "FLOW_INTERNAL_TEMP_HK1") == 0) {
                 id(FLOW_INTERNAL_TEMP_HK1).publish_state(std::stof(value));
                 return;
               }
-              if(ei->EnglishName == "STORAGE_TANK_INTERNAL_TEMP") {
+              if(strcmp(ei->EnglishName, "STORAGE_TANK_INTERNAL_TEMP") == 0) {
                 id(STORAGE_TANK_INTERNAL_TEMP).publish_state(std::stof(value) + 3);
                 return;
               }
-              if(ei->EnglishName == "SOURCE_ACTUAL") {
+              if(strcmp(ei->EnglishName, "SOURCE_ACTUAL") == 0) {
                 id(SOURCE_ACTUAL).publish_state(std::stof(value));
                 return;
               }
-              if(ei->EnglishName == "HOT_GAS_TEMP") {
+              if(strcmp(ei->EnglishName, "HOT_GAS_TEMP") == 0) {
                 id(HOT_GAS_TEMP).publish_state(std::stof(value));
                 return;
               }
-              if(ei->EnglishName == "AUXILIARY_BOILER_SETPOINT") {
+              if(strcmp(ei->EnglishName, "AUXILIARY_BOILER_SETPOINT") == 0) {
                 id(AUXILIARY_BOILER_SETPOINT).publish_state(std::stof(value));
                 return;
               }
-              if(ei->EnglishName == "HEATING_RETURN_ACTUAL") {
+              if(strcmp(ei->EnglishName, "HEATING_RETURN_ACTUAL") == 0) {
                 id(HEATING_RETURN_ACTUAL).publish_state(std::stof(value));
                 return;
               }
-              if(ei->EnglishName == "BUFFER_SETPOINT") {
+              if(strcmp(ei->EnglishName, "BUFFER_SETPOINT") == 0) {
                 id(BUFFER_SETPOINT).publish_state(std::stof(value));
                 return;
               }
-              if(ei->EnglishName == "BUFFER_TEMP_BOTTOM1") {
+              if(strcmp(ei->EnglishName, "BUFFER_TEMP_BOTTOM1") == 0) {
                 id(BUFFER_TEMP_BOTTOM1).publish_state(std::stof(value));
                 return;
               }
-              if(ei->EnglishName == "FLOW_RATE") {
+              if(strcmp(ei->EnglishName, "FLOW_RATE") == 0) {
                 id(FLOW_RATE).publish_state(std::stod(value) / 100);
                 return;
               }
-              if(ei->EnglishName == "CIRCUIT_PRESSURE") {
+              if(strcmp(ei->EnglishName, "CIRCUIT_PRESSURE") == 0) {
                 id(CIRCUIT_PRESSURE).publish_state(std::stod(value) / 100 );
                 return;
               }
-              if(ei->EnglishName == "SOURCE_PRESSURE") {
+              if(strcmp(ei->EnglishName, "SOURCE_PRESSURE") == 0) {
                 id(SOURCE_PRESSURE).publish_state(std::stod(value) / 100);
                 return;
               }
@@ -645,7 +645,7 @@ canbus:
               std::string value;
               const ElsterIndex* ei = processCanMessage(canId, value, x);
 
-              if(ei->EnglishName == "FLOW_SETPOINT_TEMP") {
+              if(strcmp(ei->EnglishName, "FLOW_SETPOINT_TEMP") == 0) {
                 id(FLOW_SETPOINT_TEMP_HK1).publish_state(std::stof(value));
                 return;
               }
@@ -657,19 +657,19 @@ canbus:
               std::string value;
               const ElsterIndex* ei = processCanMessage(canId, value, x);
 
-              if(ei->EnglishName == "HUMIDITY") {
+              if(strcmp(ei->EnglishName, "HUMIDITY") == 0) {
                 id(HUMIDITY).publish_state(std::stof(value));
                 return;
               }
-              if(ei->EnglishName == "ADJUSTED_ROOM_SET_TEMP") {
+              if(strcmp(ei->EnglishName, "ADJUSTED_ROOM_SET_TEMP") == 0) {
                 id(ADJUSTED_ROOM_SET_TEMP).publish_state(std::stof(value));
                 return;
               }
-              if(ei->EnglishName == "ROOM_INTERNAL_TEMP") {
+              if(strcmp(ei->EnglishName, "ROOM_INTERNAL_TEMP") == 0) {
                 id(ROOM_INTERNAL_TEMP).publish_state(std::stof(value));
                 return;
               }
-              if(ei->EnglishName == "BOILER_SET_TEMP") {
+              if(strcmp(ei->EnglishName, "BOILER_SET_TEMP") == 0) {
                 id(BOILER_SET_TEMP).publish_state(std::stof(value));
                 return;
               }
@@ -682,26 +682,26 @@ canbus:
               const ElsterIndex* ei = processCanMessage(canId, value, x);
 
               // FLOW_INTERNAL_TEMP_HK2
-              if(ei->EnglishName == "FLOW_INTERNAL_TEMP") {
+              if(strcmp(ei->EnglishName, "FLOW_INTERNAL_TEMP") == 0) {
                 id(FLOW_INTERNAL_TEMP_HK2).publish_state(std::stof(value));
                 return;
               }
 
               // FLOW_SETPOINT_TEMP_HK2
-              if(ei->EnglishName == "FLOW_SETPOINT_TEMP") {
+              if(strcmp(ei->EnglishName, "FLOW_SETPOINT_TEMP") == 0) {
                 id(FLOW_SETPOINT_TEMP_HK2).publish_state(std::stof(value));
                 return;
               }
 
-              if(ei->EnglishName == "ADJUSTED_ROOM_SET_TEMP") {
+              if(strcmp(ei->EnglishName, "ADJUSTED_ROOM_SET_TEMP") == 0) {
                 id(ADJUSTED_ROOM_SET_TEMP_BASEMENT).publish_state(std::stof(value));
                 return;
               }
-              if(ei->EnglishName == "MAX_TEMP_BOILER") {
+              if(strcmp(ei->EnglishName, "MAX_TEMP_BOILER") == 0) {
                 id(MAX_TEMP_BOILER).publish_state(std::stof(value));
                 return;
               }
-              if(ei->EnglishName == "ROOM_INTERNAL_TEMP") {
+              if(strcmp(ei->EnglishName, "ROOM_INTERNAL_TEMP") == 0) {
                 id(ROOM_INTERNAL_TEMP_BASEMENT).publish_state(std::stof(value));
                 return;
               }
@@ -713,7 +713,7 @@ canbus:
               std::string value;
               const ElsterIndex* ei = processCanMessage(canId, value, x);
 
-              if(ei->EnglishName == "FATAL_ERROR") {
+              if(strcmp(ei->EnglishName, "FATAL_ERROR") == 0) {
                 id(FATAL_ERROR).publish_state(std::stoi(value));
                 return;
               }
