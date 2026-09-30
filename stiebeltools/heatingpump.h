@@ -139,10 +139,12 @@ const ElsterIndex *processCanMessage(unsigned short can_id, std::string &signalV
                  can_id, unknownIndex, charValue, msg[0], msg[1], msg[2], msg[3], msg[4], msg[5], msg[6]);
         
         // Log common unknown indices that might be from older devices needing ElsterTable updates
+        /*
         if (unknownIndex == 0x3c || unknownIndex == 0xbe || unknownIndex == 0xf2 || 
             unknownIndex == 0x5f || unknownIndex == 0x56 || unknownIndex == 0x16) {
             ESP_LOGI("processCanMessage()", "Common older device index 0x%04X - consider updating ElsterTable", unknownIndex);
         }
+        */
     } else {
         ESP_LOGI("processCanMessage()", "%d:\t%s:\t%s\t(%s)", can_id, ei->EnglishName, charValue, ElsterTypeStr[ei->Type]);
         
