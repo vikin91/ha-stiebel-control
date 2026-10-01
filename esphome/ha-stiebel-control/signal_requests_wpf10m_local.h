@@ -1,7 +1,7 @@
 /*
  * Trial WPF10M request table for the ESP32-S3/MCP2515 installation.
- * Starts with the deployed s3.yaml routes. Additional upstream WPF10
- * probes are opt-in after the first hardware comparison.
+ * Starts with the deployed s3.yaml routes and one manager storage-target
+ * comparison. Other upstream WPF10 probes stay opt-in.
  */
 #ifndef SIGNAL_REQUESTS_WPF10M_LOCAL_H
 #define SIGNAL_REQUESTS_WPF10M_LOCAL_H
@@ -15,12 +15,9 @@ extern const SignalRequest signalRequests[] = {
     SIGNAL_REQUESTS_BASE
 
     // Upstream WPF10 model probes, retained for comparison.
-    {"QUELLENEINTRITTSTEMPERATUR", FREQ_30S, cm_heizmodul},
-    {"QUELLENAUSTRITTSTEMP",       FREQ_30S, cm_heizmodul},
     {"KESSELSOLLTEMP",             FREQ_30S, cm_manager},
     {"SPEICHERSOLLTEMP",           FREQ_30S, cm_manager},
     {"RUECKLAUFISTTEMP",           FREQ_30S, cm_manager},
-    {"EINSTELL_SPEICHERSOLLTEMP",  FREQ_30S, cm_manager},
     {"EINSTELL_SPEICHERSOLLTEMP",  FREQ_30S, cm_kessel},
     {"ABTAUUNGAKTIV",              FREQ_1MIN, cm_heizmodul},
     {"BETRIEBSART_WP",             FREQ_10MIN, cm_manager},
@@ -28,6 +25,10 @@ extern const SignalRequest signalRequests[] = {
     {"HEIZKURVE",                  FREQ_10MIN, cm_manager},
     {"ANTILEGIONELLEN",            FREQ_10MIN, cm_manager},
 #endif
+
+    // One upstream read-only probe for comparison with the two 0x0003 replies.
+    // Manager 0x0013 is a configured storage target, not a proven WPF10M value.
+    {"EINSTELL_SPEICHERSOLLTEMP",  FREQ_10MIN, cm_manager},
 
     // Requests from the working s3.yaml configuration.
     {"AUSSENTEMP",                 FREQ_10MIN, cm_kessel},
