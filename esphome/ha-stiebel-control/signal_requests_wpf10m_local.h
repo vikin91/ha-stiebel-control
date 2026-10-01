@@ -1,7 +1,7 @@
 /*
  * Trial WPF10M request table for the ESP32-S3/MCP2515 installation.
- * Starts with the upstream WPF10 probes and adds the routes used by s3.yaml.
- * The extra probes are not claims of validated WPF10M signal meanings.
+ * Starts with the deployed s3.yaml routes. Additional upstream WPF10
+ * probes are opt-in after the first hardware comparison.
  */
 #ifndef SIGNAL_REQUESTS_WPF10M_LOCAL_H
 #define SIGNAL_REQUESTS_WPF10M_LOCAL_H
@@ -10,6 +10,8 @@
 #include "signal_requests_base.h"
 
 extern const SignalRequest signalRequests[] = {
+    // Enable only after the deployed sensor routes have been checked on hardware.
+#ifdef WPF10M_UPSTREAM_PROBES
     SIGNAL_REQUESTS_BASE
 
     // Upstream WPF10 model probes, retained for comparison.
@@ -25,6 +27,7 @@ extern const SignalRequest signalRequests[] = {
     {"RAUMSOLLTEMP_I",             FREQ_30S, cm_manager},
     {"HEIZKURVE",                  FREQ_10MIN, cm_manager},
     {"ANTILEGIONELLEN",            FREQ_10MIN, cm_manager},
+#endif
 
     // Requests from the working s3.yaml configuration.
     {"AUSSENTEMP",                 FREQ_10MIN, cm_kessel},

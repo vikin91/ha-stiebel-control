@@ -1,6 +1,7 @@
 # Trial firmware for the deployed ESP32-S3 + MCP2515 WPF10M installation.
 # Based on upstream v2.1.1; keep the fork's v0.1.6 firmware as the rollback point.
-# Review the new upstream writable controls and poll list before installing.
+# First hardware test: deployed poll list, CAN parameter writes blocked.
+# Upstream extra probes and raw MQTT discovery are disabled by default.
 substitutions:
   device_name: heatingpump
   friendly_name: Heating Pump CAN Interface S3
@@ -19,6 +20,13 @@ packages:
 
 esphome:
   friendly_name: Heating Pump CAN Interface S3
+  platformio_options:
+    build_flags:
+      - "-DWPF10M_READ_ONLY"
+      # Later comparison: opt in to upstream WPF10 probes.
+      # - "-DWPF10M_UPSTREAM_PROBES"
+      # Optional raw CAN MQTT discovery stream.
+      # - "-DWPF10M_RAW_MQTT"
 
 esp32:
   board: esp32-s3-devkitc-1

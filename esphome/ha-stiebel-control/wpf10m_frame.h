@@ -4,6 +4,7 @@
 #include "ha-stiebel-control.h"
 #include "wpf10m_protocol.h"
 
+#ifdef WPF10M_RAW_MQTT
 // Preserve the diagnostic MQTT names used by the deployed fork for known
 // WPF10M values. All other indices keep the upstream table name.
 inline const char *wpf10mDiagnosticName(uint16_t index, const ElsterIndex *ei) {
@@ -94,6 +95,8 @@ inline void publishWpf10mRawFrame(uint32_t can_id, const std::vector<uint8_t> &b
 #endif
 }
 
+#endif // WPF10M_RAW_MQTT
+
 inline void processWpf10mFrame(uint32_t can_id, const std::vector<uint8_t> &bytes) {
   Wpf10mValue reading;
   if (!decodeWpf10mValue(bytes, reading)) return;
@@ -130,8 +133,10 @@ inline void processWpf10mFrame(uint32_t can_id, const std::vector<uint8_t> &byte
     }
   }
 
-  // Same best-effort, QoS-0 diagnostic topic as the working v0.1.6 firmware.
+  // Optional, best-effort diagnostic stream; off during first hardware test.
+#ifdef WPF10M_RAW_MQTT
   publishWpf10mRawFrame(can_id, bytes, reading);
+#endif
 }
 
 #endif

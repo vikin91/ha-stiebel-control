@@ -493,6 +493,10 @@ void readSignal(const CanMember *cm, const char *elsterName)
 
 void writeSignal(const CanMember *cm, const ElsterIndex *ei, const char *&str)
 {
+#ifdef WPF10M_READ_ONLY
+    ESP_LOGW("writeSignal()", "WPF10M trial: blocked CAN parameter write %s to %s", ei->Name, cm->Name);
+    return;
+#endif
     bool use_extended_id = false;
     int writeValue = TranslateString(str, ei->Type);
     if (writeValue == -1) {
