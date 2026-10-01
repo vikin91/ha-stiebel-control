@@ -101,36 +101,46 @@ inline void processWpf10mFrame(uint32_t can_id, const std::vector<uint8_t> &byte
   Wpf10mValue reading;
   if (!decodeWpf10mValue(bytes, reading)) return;
   const float tenths = wpf10mTenths(reading.raw);
+  const char *label = nullptr;
+  float published_value = tenths;
 
   if (can_id == 0x180) {
     switch (reading.index) {
-      case 0x0001: id(ERROR_MESSAGE).publish_state(reading.raw); break;
-      case 0x0003: id(STORAGE_TANK_SETPOINT_TEMP_PUMP).publish_state(tenths); break;
-      case 0x000C: id(OUTSIDE_TEMP).publish_state(tenths); break;
-      case 0x000E: id(STORAGE_TANK_INTERNAL_TEMP).publish_state(tenths + 3.0f); break;
-      case 0x0016: id(RETURN_FLOW_INTERNAL_TEMP).publish_state(tenths); break;
-      case 0x01D4: id(SOURCE_ACTUAL).publish_state(tenths); break;
-      case 0x01D5: id(BUFFER_SETPOINT).publish_state(tenths); break;
-      case 0x01D6: id(HEATING_RETURN_ACTUAL).publish_state(tenths); break;
-      case 0x01D7: id(AUXILIARY_BOILER_SETPOINT).publish_state(tenths); break;
-      case 0x02CA: id(FLOW_INTERNAL_TEMP_HK1).publish_state(tenths); break;
+      case 0x0001: id(ERROR_MESSAGE).publish_state(reading.raw); label = "Pump error number"; published_value = reading.raw; break;
+      case 0x0003: id(STORAGE_TANK_SETPOINT_TEMP_PUMP).publish_state(tenths); label = "Storage setpoint (pump)"; break;
+      case 0x000C: id(OUTSIDE_TEMP).publish_state(tenths); label = "Outside temperature"; break;
+      case 0x000E: id(STORAGE_TANK_INTERNAL_TEMP).publish_state(tenths + 3.0f); label = "Storage actual (+3 C correction)"; published_value = tenths + 3.0f; break;
+      case 0x0016: id(RETURN_FLOW_INTERNAL_TEMP).publish_state(tenths); label = "Return flow temperature"; break;
+      case 0x01D4: id(SOURCE_ACTUAL).publish_state(tenths); label = "Source actual"; break;
+      case 0x01D5: id(BUFFER_SETPOINT).publish_state(tenths); label = "Buffer setpoint"; break;
+      case 0x01D6: id(HEATING_RETURN_ACTUAL).publish_state(tenths); label = "Heating return actual (unverified name)"; break;
+      case 0x01D7: id(AUXILIARY_BOILER_SETPOINT).publish_state(tenths); label = "Auxiliary boiler setpoint"; break;
+      case 0x02CA: id(FLOW_INTERNAL_TEMP_HK1).publish_state(tenths); label = "HK1 flow temperature (unverified index)"; break;
       default: break;
     }
   } else if (can_id == 0x301) {
     switch (reading.index) {
-      case 0x0003: id(STORAGE_TANK_SETPOINT_TEMP).publish_state(tenths); break;
-      case 0x0004: id(FLOW_SETPOINT_TEMP_HK1).publish_state(tenths); break;
+      case 0x0003: id(STORAGE_TANK_SETPOINT_TEMP).publish_state(tenths); label = "Storage setpoint (FE7X)"; break;
+      case 0x0004: id(FLOW_SETPOINT_TEMP_HK1).publish_state(tenths); label = "HK1 flow setpoint (FE7X)"; break;
       default: break;
     }
   } else if (can_id == 0x480) {
     switch (reading.index) {
-      case 0x0001: id(ERROR_MESSAGE_MANAGER).publish_state(reading.raw); break;
+      case 0x0001: id(ERROR_MESSAGE_MANAGER).publish_state(reading.raw); label = "Manager error number"; published_value = reading.raw; break;
       case 0x005F:
         // Manager command observed as 00 00 (OFF) and 02 00 (ON).
         id(COMPRESSOR_RUNNING).publish_state(wpf10mCompressorRunning(reading));
+        ESP_LOGI("WPF10M", "Manager compressor command [CAN 0x480, Elster 0x005F]: %s",
+                 wpf10mCompressorRunning(reading) ? "ON" : "OFF");
         break;
       default: break;
     }
+  }
+
+  if (label != nullptr) {
+    ESP_LOGI("WPF10M", "%s [CAN 0x%03X, Elster 0x%04X]: %g",
+             label, static_cast<unsigned>(can_id), static_cast<unsigned>(reading.index),
+             static_cast<double>(published_value));
   }
 
   // Optional, best-effort diagnostic stream; off during first hardware test.
