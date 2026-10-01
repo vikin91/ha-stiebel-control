@@ -483,6 +483,11 @@ void readSignal(const CanMember *cm, const ElsterIndex *ei)
     ESP_LOGI("readSignal()", "%s", logmsg);
 
     id(my_can).send_data(CanMembers[cm_pc].CanId, use_extended_id, data);
+#ifdef WPF10M_READ_ONLY
+    if (cm->CanId == 0x180 && ei->Index == 0x01D4) {
+        ESP_LOGI("WPF10M", "Source actual poll [CAN 0x180, Elster 0x01D4]");
+    }
+#endif
 }
 
 void readSignal(const CanMember *cm, const char *elsterName)
