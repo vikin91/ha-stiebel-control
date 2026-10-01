@@ -486,8 +486,6 @@ void readSignal(const CanMember *cm, const ElsterIndex *ei)
 #ifdef WPF10M_READ_ONLY
     if (cm->CanId == 0x180 && ei->Index == 0x01D4) {
         ESP_LOGI("WPF10M", "Source actual poll [CAN 0x180, Elster 0x01D4]");
-    } else if (cm->CanId == 0x480 && ei->Index == 0x0013) {
-        ESP_LOGI("WPF10M", "Experimental manager storage target poll [CAN 0x480, Elster 0x0013]");
     }
 #endif
 }
@@ -2021,4 +2019,3 @@ void updateDate(CanMember cm, const char *str_date)
 #endif // !defined(HA_DUMMY_BUILD)
 
 #endif // ha_stiebel_control_H
-

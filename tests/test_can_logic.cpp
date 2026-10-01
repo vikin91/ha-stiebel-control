@@ -16,7 +16,7 @@
 
 // Run the model-specific routing header in the same translation unit as the
 // upstream core, which defines functions directly in its header.
-static FakeSensor wpf10m_sensors[15];
+static FakeSensor wpf10m_sensors[14];
 #define OUTSIDE_TEMP wpf10m_sensors[0]
 #define RETURN_FLOW_INTERNAL_TEMP wpf10m_sensors[1]
 #define FLOW_INTERNAL_TEMP_HK1 wpf10m_sensors[2]
@@ -31,7 +31,6 @@ static FakeSensor wpf10m_sensors[15];
 #define ERROR_MESSAGE wpf10m_sensors[11]
 #define ERROR_MESSAGE_MANAGER wpf10m_sensors[12]
 #define COMPRESSOR_RUNNING wpf10m_sensors[13]
-#define EXPERIMENTAL_STORAGE_TARGET_MANAGER wpf10m_sensors[14]
 
 #include "../esphome/ha-stiebel-control/wpf10m_frame.h"
 
@@ -1109,19 +1108,6 @@ TEST_CASE("WPF10M routes compressor and dual storage setpoint by sender", "[wpf1
     processWpf10mFrame(0x180, {0x31, 0x00, 0x03, 0x01, 0x90, 0x00, 0x00});
     CHECK(STORAGE_TANK_SETPOINT_TEMP_PUMP.last_state == 40.0f);
     CHECK(STORAGE_TANK_SETPOINT_TEMP.last_state == 30.0f);
-}
-
-TEST_CASE("WPF10M manager storage target probe stays separate from 0x0003 setpoints", "[wpf10m]") {
-    const ElsterIndex *target = GetElsterIndex("EINSTELL_SPEICHERSOLLTEMP");
-    REQUIRE(target != nullptr);
-    CHECK(target->Index == 0x0013);
-    CHECK_FALSE(target->isBlacklisted);
-    const float fe7x_setpoint = STORAGE_TANK_SETPOINT_TEMP.last_state;
-    const float pump_setpoint = STORAGE_TANK_SETPOINT_TEMP_PUMP.last_state;
-    processWpf10mFrame(0x480, {0x91, 0x00, 0x13, 0x01, 0x7C, 0x00, 0x00});
-    CHECK(EXPERIMENTAL_STORAGE_TARGET_MANAGER.last_state == 38.0f);
-    CHECK(STORAGE_TANK_SETPOINT_TEMP.last_state == fe7x_setpoint);
-    CHECK(STORAGE_TANK_SETPOINT_TEMP_PUMP.last_state == pump_setpoint);
 }
 
 TEST_CASE("WPF10M retains the storage correction and signed temperatures", "[wpf10m]") {

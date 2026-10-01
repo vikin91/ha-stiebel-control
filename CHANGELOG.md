@@ -5,6 +5,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions: [Sem
 
 ---
 
+## [2.1.1-wpf10m.2] — 2026-10-01
+
+### Added
+
+- Fork-specific, read-only ESP32-S3/MCP2515 profile for the owner's WPF10M, based on upstream 2.1.1.
+  It carries the proven S3 sensor routes, source temperature reading, and observed manager
+  compressor command into `heatingpump_wpf10m_local.yaml`.
+- Separate pump and FE7X storage setpoint sensors so their different replies can be compared.
+
+### Changed
+
+- Removed the experimental manager storage target probe (`0x0013`) after the deployed firmware
+  sent a request but received no matching value. The original storage setpoint mappings remain.
+- Kept upstream MQTT discovery, calculated values, and CAN parameter writes inactive in this
+  WPF10M profile pending hardware validation. The upstream profiles remain available.
+
+### Migration
+
+- `v0.1.6` remains the rollback tag for the previous S3 firmware and its full source history.
+  The new profile is a separate entry point; it does not silently replace an installed device.
+
+---
+
 ## [2.1.1] — 2026-07-25
 
 ### Fixed

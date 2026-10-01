@@ -1,6 +1,6 @@
 # Trial firmware for the deployed ESP32-S3 + MCP2515 WPF10M installation.
 # Based on upstream v2.1.1; keep the fork's v0.1.6 firmware as the rollback point.
-# Read-only trial: deployed polls plus one manager storage target comparison.
+# Read-only WPF10M profile: deployed sensor polls only.
 # Upstream extra probes and raw MQTT discovery are disabled by default.
 substitutions:
   device_name: heatingpump
@@ -22,7 +22,7 @@ esphome:
   friendly_name: Heating Pump CAN Interface S3
   # Bump for each trial firmware so device logs and HA show the installed build.
   project:
-    version: "2.1.1-wpf10m.1"
+    version: "2.1.1-wpf10m.2"
   platformio_options:
     build_flags:
       - "-DWPF10M_READ_ONLY"

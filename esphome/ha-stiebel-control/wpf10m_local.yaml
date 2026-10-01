@@ -71,15 +71,6 @@ sensor:
     device_class: temperature
     state_class: measurement
     accuracy_decimals: 1
-  # Experimental upstream probe: manager 0x480 / Elster 0x0013.
-  # Compare with the heat pump display; do not use for control.
-  - platform: template
-    name: EXPERIMENTAL_STORAGE_TARGET_MANAGER
-    id: EXPERIMENTAL_STORAGE_TARGET_MANAGER
-    unit_of_measurement: °C
-    device_class: temperature
-    state_class: measurement
-    accuracy_decimals: 1
   # The old English alias says return, but WPVORLAUFIST suggests flow.
   - platform: template
     name: HEATING_RETURN_ACTUAL

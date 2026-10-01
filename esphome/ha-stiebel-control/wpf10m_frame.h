@@ -127,7 +127,6 @@ inline void processWpf10mFrame(uint32_t can_id, const std::vector<uint8_t> &byte
   } else if (can_id == 0x480) {
     switch (reading.index) {
       case 0x0001: id(ERROR_MESSAGE_MANAGER).publish_state(reading.raw); label = "Manager error number"; published_value = reading.raw; break;
-      case 0x0013: id(EXPERIMENTAL_STORAGE_TARGET_MANAGER).publish_state(tenths); label = "Experimental configured storage target (manager)"; break;
       case 0x005F:
         // Manager command observed as 00 00 (OFF) and 02 00 (ON).
         id(COMPRESSOR_RUNNING).publish_state(wpf10mCompressorRunning(reading));
