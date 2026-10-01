@@ -19,5 +19,9 @@ canbus:
         then:
           - lambda: |-
               if (x.size() < 7) return;
+              // WPF10M sensors use the explicit sender/index mapping below.
+              // The generic upstream path auto-publishes unverified MQTT values.
+              #ifndef WPF10M_SENSOR_ONLY
               processAndUpdate(can_id, x);
+              #endif
               processWpf10mFrame(can_id, x);

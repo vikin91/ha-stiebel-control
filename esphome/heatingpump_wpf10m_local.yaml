@@ -23,6 +23,7 @@ esphome:
   platformio_options:
     build_flags:
       - "-DWPF10M_READ_ONLY"
+      - "-DWPF10M_SENSOR_ONLY"
       # Later comparison: opt in to upstream WPF10 probes.
       # - "-DWPF10M_UPSTREAM_PROBES"
       # Optional raw CAN MQTT discovery stream.
@@ -46,6 +47,23 @@ ota:
 mqtt:
   broker: 192.168.178.11
   port: 1883
+  # Keep the broker connection for shared upstream code, but do not install
+  # its unverified MQTT discovery or command handlers for this trial.
+  on_connect: !remove
+  on_message: !remove
+
+# These shared-package controls and background reads are not part of the
+# deployed WPF10M sensor map. Keep the weekly restart button from the model
+# package and the normal device-management buttons.
+sensor:
+  - id: !remove PROGRAMMSCHALTER
+  - id: !remove SOMMERBETRIEB
+  - id: !remove WW_ECO
+
+button:
+  - id: !remove update_uhrzeit
+  - id: !remove update_datum
+  - id: !remove republish_mqtt_discoveries
 
 logger:
   # The upstream decoder logs every passive frame using German table keys.

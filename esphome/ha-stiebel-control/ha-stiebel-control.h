@@ -621,6 +621,9 @@ void publishCalculatedSensorDiscovery(const CalculatedSensorConfig& config, bool
 
 // Publish all calculated sensor discoveries (used during startup and republish)
 void publishAllCalculatedSensorDiscoveries(bool forceRepublish = false) {
+#ifdef WPF10M_SENSOR_ONLY
+    return; // The WPF10M trial exposes only its explicit CAN sensor mapping.
+#endif
     if (forceRepublish) {
         discoveredCalculatedSensors.clear();
         ESP_LOGI("MQTT", "Republishing all calculated sensor discoveries");
@@ -714,6 +717,9 @@ void publishWritableNumberDiscovery(const WritableNumberConfig& config, bool for
 
 // Publish all writable number discoveries
 void publishAllWritableNumberDiscoveries(bool forceRepublish = false) {
+#ifdef WPF10M_SENSOR_ONLY
+    return; // The WPF10M trial exposes only its explicit CAN sensor mapping.
+#endif
     if (forceRepublish) {
         discoveredWritableNumbers.clear();
         ESP_LOGI("MQTT", "Republishing all writable number discoveries");
@@ -816,6 +822,9 @@ void publishWritableSelectDiscovery(const WritableSelectConfig& config, bool for
 
 // Publish all writable select discoveries
 void publishAllWritableSelectDiscoveries(bool forceRepublish = false) {
+#ifdef WPF10M_SENSOR_ONLY
+    return; // The WPF10M trial exposes only its explicit CAN sensor mapping.
+#endif
     if (forceRepublish) {
         discoveredWritableSelects.clear();
         ESP_LOGI("MQTT", "Republishing all writable select discoveries");
@@ -1149,6 +1158,9 @@ void publishMqttDiscovery(const CanMember &cm, const ElsterIndex *ei) {
 
 // Republish all MQTT discoveries (for periodic refresh)
 void republishAllDiscoveries() {
+#ifdef WPF10M_SENSOR_ONLY
+    return; // The WPF10M trial exposes only its explicit CAN sensor mapping.
+#endif
     ESP_LOGI("MQTT", "Republishing all MQTT discoveries (%d signals)", discoveredSignals.size());
     
     // Create a copy of discovered signals to iterate over, filtering out blacklisted signals
@@ -1701,6 +1713,9 @@ void publishCanDiagnostics() {
 // Process calculated sensor updates with frequency-based scheduling
 // This function should be called regularly from the main loop
 void processCalculatedSensors() {
+#ifdef WPF10M_SENSOR_ONLY
+    return; // The WPF10M trial exposes only its explicit CAN sensor mapping.
+#endif
     unsigned long now = millis();
     
     // Initialize scheduled update times on first run (with random offsets to spread load)
