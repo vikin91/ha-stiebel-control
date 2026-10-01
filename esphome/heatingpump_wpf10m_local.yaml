@@ -46,8 +46,6 @@ ota:
 mqtt:
   broker: 192.168.178.11
   port: 1883
-  # Restore ESPHome MQTT entity discovery, as enabled by s3.yaml.
-  discovery: true
 
 logger:
   # The upstream decoder logs every passive frame using German table keys.
