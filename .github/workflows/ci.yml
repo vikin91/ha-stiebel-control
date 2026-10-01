@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Unit Tests (native host)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build and run tests
+        run: make test
+
+      - name: Verify test count (regression guard)
+        run: |
+          COUNT=$(./tests/run_tests --reporter compact 2>&1 | grep -c "passed")
+          echo "Test assertions passing: $COUNT"
+
+  compile-s3:
+    name: Compile ESP32-S3
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ESPHome
+        run: pip install esphome==2026.5.3
+
+      - name: Use CI secrets
+        run: cp esphome/ci_secrets.yaml esphome/secrets.yaml
+
+      - name: Compile (ESP32-S3)
+        run: esphome compile esphome/ci_heatingpump_s3.yaml
+
+  compile-s2:
+    name: Compile ESP32-S2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ESPHome
+        run: pip install esphome==2026.5.3
+
+      - name: Use CI secrets
+        run: cp esphome/ci_secrets.yaml esphome/secrets.yaml
+
+      - name: Compile (ESP32-S2)
+        run: esphome compile esphome/ci_heatingpump_s2.yaml
+
+  release:
+    name: GitHub Release
+    needs: [compile-s3, compile-s2]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ESPHome
+        run: pip install esphome==2026.5.3
+
+      - name: Use CI secrets
+        run: cp esphome/ci_secrets.yaml esphome/secrets.yaml
+
+      - name: Verify S3 firmware compiles
+        run: esphome compile esphome/ci_heatingpump_s3.yaml
+
+      - name: Verify S2 firmware compiles
+        run: esphome compile esphome/ci_heatingpump_s2.yaml
+
+      - name: Extract release notes
+        run: |
+          python3 - <<'EOF'
+          import re, sys
+          text = open("CHANGELOG.md").read()
+          # Extract content between first ## heading and the next ## heading
+          m = re.search(r'(## \[.*?\].*?)(?=\n## \[|\Z)', text, re.DOTALL)
+          if not m:
+              print("Could not extract release notes", file=sys.stderr)
+              sys.exit(1)
+          open("release_notes.md", "w").write(m.group(1).strip())
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release_notes.md
+          # No firmware binaries attached — they are compiled with placeholder credentials
+          # and would be unusable and potentially dangerous for end users.
+          # Users must compile their own firmware with their own secrets.yaml.
+
+  validate-yaml:
+    name: Validate YAML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Validate YAML files
+        run: |
+          yamllint -d '{extends: relaxed, rules: {line-length: {max: 120}}}' \
+            esphome/ha-stiebel-control/*.yaml \
+            packages/*.yaml

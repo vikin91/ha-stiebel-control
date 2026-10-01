@@ -1,0 +1,13 @@
+#
+#  WPL13E Heat Pump — Model Package
+#
+#  Selects the WPL13E signal request table (SIGNAL_REQUESTS_BASE + WPL13E-specific
+#  signals). All universal sensors live in common.yaml.
+#
+#  To add a new model, create signal_requests_yourmodel.h and a thin yourmodel.yaml
+#  following this pattern. See CONTRIBUTING.md for full instructions.
+#
+
+esphome:
+  includes:
+    - ha-stiebel-control/signal_requests_wpl13e.h

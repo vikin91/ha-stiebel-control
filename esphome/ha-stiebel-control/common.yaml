@@ -1,0 +1,639 @@
+#
+#
+#  Copyright (C) 2023 Bastian Stahmer (bastian@stahmer.net)
+#
+#  This program is part of the ESPHome / Home Assistant Program "ha-stiebel-control"
+#  and is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation version 3 of the License.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#  GNU Lesser General Public License for more details.
+#
+#  You should have received a copy of the GNU Lesser General Public License
+#  along with this program. If not, see http://www.gnu.org/licenses/ .
+#
+
+esphome:
+  name: heatingpump
+  friendly_name: "Heating Pump CAN Interface"
+  project:
+    name: "bullitt186.ha-stiebel-control"
+    version: "2.1.1"
+  on_boot:
+    priority: 600
+    then:
+      - lambda: |-
+          initBoostStatePrefs();
+          loadBoostState();
+  includes:
+    - ha-stiebel-control/elster/ElsterTable.h
+    - ha-stiebel-control/elster/KElsterTable.h
+    - ha-stiebel-control/elster/KElsterTable.cpp
+    - ha-stiebel-control/elster/NUtils.h
+    - ha-stiebel-control/elster/NUtils.cpp
+    - ha-stiebel-control/elster/NTypes.h
+    - ha-stiebel-control/config.h
+    - ha-stiebel-control/language_select.h
+    - ha-stiebel-control/lang_base.h
+    - ha-stiebel-control/lang_en.h
+    - ha-stiebel-control/sg_ready_controller.h
+    - ha-stiebel-control/ha-stiebel-control.h
+    - ha-stiebel-control/signal_requests_base.h
+    # model-specific signal_requests_*.h is declared by each model yaml package
+  platformio_options:
+    build_flags:
+      - "-DHA_DEVICE_MODEL=${device_model}"
+      - "-DHA_LANGUAGE_${language}"
+
+
+#########################################
+#                                       #
+#   LOGGER                              #
+#                                       #
+#########################################
+logger:
+  level: INFO
+  baud_rate: 115200
+
+
+#########################################
+#                                       #
+#   API & OTA                           #
+#                                       #
+#########################################
+api:
+  reboot_timeout: 15min
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  platform: esphome
+  password: f0e6110663e3bef67846f076d7e4db81
+
+safe_mode:
+  reboot_timeout: 5min
+
+#########################################
+#                                       #
+#   MQTT                                #
+#                                       #
+#########################################
+mqtt:
+  broker: !secret mqtt_broker
+  username: !secret mqtt_username
+  password: !secret mqtt_password
+  id: mqtt_client
+  # Disable native ESPHome discovery - using custom auto-discovery instead
+  discovery: false
+  discovery_prefix: homeassistant
+  # Birth message - sent when ESP32 connects
+  birth_message:
+    topic: heatingpump/status
+    payload: online
+    qos: 1
+    retain: true
+  # Last Will Testament - sent by broker if ESP32 disconnects unexpectedly
+  will_message:
+    topic: heatingpump/status
+    payload: offline
+    qos: 1
+    retain: true
+  # Keepalive for connection monitoring
+  keepalive: 15s
+  # Disable reboot on MQTT disconnect - will keep trying to reconnect indefinitely
+  reboot_timeout: 0s
+  on_connect:
+    - logger.log:
+        level: INFO
+        format: "Connected to MQTT broker"
+        tag: "MQTT_CONN"
+    - lambda: |-
+        ESP_LOGI("MQTT_CONN", "Publishing writable entity discoveries...");
+        // Publish MQTT number discoveries for writable temperature setpoints
+        publishAllWritableNumberDiscoveries();
+        // Publish MQTT select discoveries for operating mode control
+        publishAllWritableSelectDiscoveries();
+        // Datetime control now handled by Home Assistant input_datetime helpers
+        ESP_LOGI("MQTT_CONN", "Discovery publication complete");
+
+        // Publish initial states for SG Ready controls
+        ESP_LOGI("MQTT_CONN", "Publishing initial SG Ready states...");
+        // Publish default SG Ready state (2 - Normal)
+        const char* sgStateStr = sgReadyOptions[1]; // Index 1 = "2 - Normal"
+        id(mqtt_client).publish("heatingpump/MANAGER/SG_READY_STATE/state", sgStateStr, strlen(sgStateStr), 0, true);
+        // Publish current boost values (reflect actual in-memory values, not hardcoded defaults)
+        char boost3Str[16], boost4Str[16];
+        snprintf(boost3Str, sizeof(boost3Str), "%.1f", sgReadyBoostState3Value());
+        snprintf(boost4Str, sizeof(boost4Str), "%.1f", sgReadyBoostState4Value());
+        id(mqtt_client).publish("heatingpump/MANAGER/SG_READY_BOOST_STATE3/state", boost3Str, strlen(boost3Str), 0, true);
+        id(mqtt_client).publish("heatingpump/MANAGER/SG_READY_BOOST_STATE4/state", boost4Str, strlen(boost4Str), 0, true);
+        // Update sensors with initial values
+        id(sg_ready_boost_state3_sensor).publish_state(sgReadyBoostState3Value());
+        id(sg_ready_boost_state4_sensor).publish_state(sgReadyBoostState4Value());
+        id(SG_READY_CURRENT_STATE).publish_state(
+          currentSgReadyState == 0 ? "Deaktiviert" :
+          currentSgReadyState == 1 ? "1 - EVU Sperre" :
+          currentSgReadyState == 2 ? "2 - Normal" :
+          currentSgReadyState == 3 ? "3 - Empfohlen" :
+          currentSgReadyState == 4 ? "4 - Zwang" : "Unbekannt"
+        );
+        ESP_LOGI("MQTT_CONN", "Initial SG Ready states published");
+  on_disconnect:
+    - logger.log:
+        level: WARN
+        format: "Disconnected from MQTT broker - will automatically retry"
+  on_message:
+    - topic: heatingpump/reconnect
+      then:
+        - logger.log: "Manual reconnect triggered"
+
+    # Force republish all discoveries (including writable entities)
+    - topic: heatingpump/republish_discoveries
+      then:
+        - lambda: |-
+            ESP_LOGI("MQTT_CMD", "Manual discovery republish triggered");
+            republishAllDiscoveries();
+            publishAllWritableNumberDiscoveries(true);
+            publishAllWritableSelectDiscoveries(true);
+            publishAllCalculatedSensorDiscoveries(true);
+            ESP_LOGI("MQTT_CMD", "All discoveries republished");
+
+    # Temperature setpoint controls
+    - topic: heatingpump/MANAGER/EINSTELL_SPEICHERSOLLTEMP/set
+      then:
+        - lambda: |-
+            ESP_LOGI("MQTT_CMD", "Received EINSTELL_SPEICHERSOLLTEMP command: %s", x.c_str());
+            // Ensure discovery is published
+            publishWritableNumberDiscovery(writableNumbers[0]);
+            // Write to CAN bus
+            const char* value = x.c_str();
+            writeSignal(&CanMembers[cm_manager], "EINSTELL_SPEICHERSOLLTEMP", value);
+            // Read back to update state
+            readSignal(&CanMembers[cm_manager], "EINSTELL_SPEICHERSOLLTEMP");
+
+    - topic: heatingpump/MANAGER/EINSTELL_SPEICHERSOLLTEMP2/set
+      then:
+        - lambda: |-
+            ESP_LOGI("MQTT_CMD", "Received EINSTELL_SPEICHERSOLLTEMP2 command: %s", x.c_str());
+            // Ensure discovery is published
+            publishWritableNumberDiscovery(writableNumbers[1]);
+            // Write to CAN bus
+            const char* value = x.c_str();
+            writeSignal(&CanMembers[cm_manager], "EINSTELL_SPEICHERSOLLTEMP2", value);
+            // Read back to update state
+            readSignal(&CanMembers[cm_manager], "EINSTELL_SPEICHERSOLLTEMP2");
+
+    # Operating mode control
+    - topic: heatingpump/MANAGER/PROGRAMMSCHALTER/set
+      then:
+        - lambda: |-
+            ESP_LOGI("MQTT_CMD", "Received PROGRAMMSCHALTER command: %s", x.c_str());
+            // Ensure discovery is published
+            publishWritableSelectDiscovery(writableSelects[0]);
+            // Write to CAN bus
+            const char* value = x.c_str();
+            writeSignal(&CanMembers[cm_manager], "PROGRAMMSCHALTER", value);
+            // Read back to update state
+            readSignal(&CanMembers[cm_manager], "PROGRAMMSCHALTER");
+
+    # SG Ready state control
+    - topic: heatingpump/MANAGER/SG_READY_STATE/set
+      then:
+        - lambda: |-
+            ESP_LOGI("MQTT_CMD", "Received SG_READY_STATE command: %s", x.c_str());
+            // Ensure discovery is published
+            publishWritableSelectDiscovery(writableSelects[1]);
+
+            // Parse the state from the string (format: "1 - EVU Sperre", "2 - Normal", etc.)
+            int state = 0;
+            if (x.find("1 - ") == 0) state = 1;
+            else if (x.find("2 - ") == 0) state = 2;
+            else if (x.find("3 - ") == 0) state = 3;
+            else if (x.find("4 - ") == 0) state = 4;
+
+            if (state >= 1 && state <= 4) {
+                applySgReadyState(state);
+            } else {
+                ESP_LOGW("MQTT_CMD", "Invalid SG Ready state received: %s", x.c_str());
+            }
+
+    # SG Ready boost temperature for State 3
+    - topic: heatingpump/MANAGER/SG_READY_BOOST_STATE3/set
+      then:
+        - lambda: |-
+            ESP_LOGI("MQTT_CMD", "Received SG_READY_BOOST_STATE3 command: %s", x.c_str());
+            // Ensure discovery is published
+            publishWritableNumberDiscovery(writableNumbers[2]);
+            // Parse and store the boost value
+            char* endPtr;
+            float boost = strtof(x.c_str(), &endPtr);
+            if (endPtr != x.c_str() && *endPtr == '\0' && boost >= 0.0 && boost <= 10.0) {
+                setSgReadyBoost3(boost);
+                ESP_LOGI("SG_READY", "State 3 boost set to %.1f°C", boost);
+                // Publish state back
+                char stateTopic[128];
+                snprintf(stateTopic, sizeof(stateTopic), "heatingpump/MANAGER/SG_READY_BOOST_STATE3/state");
+                char valueStr[16];
+                snprintf(valueStr, sizeof(valueStr), "%.1f", sgReadyBoostState3Value());
+                id(mqtt_client).publish(stateTopic, valueStr, strlen(valueStr), 0, true);
+                // Update sensor
+                id(sg_ready_boost_state3_sensor).publish_state(sgReadyBoostState3Value());
+            } else {
+                ESP_LOGW("MQTT_CMD", "Invalid boost value: %s", x.c_str());
+            }
+
+    # SG Ready boost temperature for State 4
+    - topic: heatingpump/MANAGER/SG_READY_BOOST_STATE4/set
+      then:
+        - lambda: |-
+            ESP_LOGI("MQTT_CMD", "Received SG_READY_BOOST_STATE4 command: %s", x.c_str());
+            // Ensure discovery is published
+            publishWritableNumberDiscovery(writableNumbers[3]);
+            // Parse and store the boost value
+            char* endPtr;
+            float boost = strtof(x.c_str(), &endPtr);
+            if (endPtr != x.c_str() && *endPtr == '\0' && boost >= 0.0 && boost <= 15.0) {
+                setSgReadyBoost4(boost);
+                ESP_LOGI("SG_READY", "State 4 boost set to %.1f°C", boost);
+                // Publish state back
+                char stateTopic[128];
+                snprintf(stateTopic, sizeof(stateTopic), "heatingpump/MANAGER/SG_READY_BOOST_STATE4/state");
+                char valueStr[16];
+                snprintf(valueStr, sizeof(valueStr), "%.1f", sgReadyBoostState4Value());
+                id(mqtt_client).publish(stateTopic, valueStr, strlen(valueStr), 0, true);
+                // Update sensor
+                id(sg_ready_boost_state4_sensor).publish_state(sgReadyBoostState4Value());
+            } else {
+                ESP_LOGW("MQTT_CMD", "Invalid boost value: %s", x.c_str());
+            }
+
+    # Room temperature setpoints for heating circuits 1–3 and night/reduced mode
+    - topic: heatingpump/MANAGER/RAUMSOLLTEMP_I/set
+      then:
+        - lambda: |-
+            ESP_LOGI("MQTT_CMD", "Received RAUMSOLLTEMP_I command: %s", x.c_str());
+            publishWritableNumberDiscovery(writableNumbers[4]);
+            const char* value = x.c_str();
+            writeSignal(&CanMembers[cm_manager], "RAUMSOLLTEMP_I", value);
+            readSignal(&CanMembers[cm_manager], "RAUMSOLLTEMP_I");
+
+    - topic: heatingpump/MANAGER/RAUMSOLLTEMP_II/set
+      then:
+        - lambda: |-
+            ESP_LOGI("MQTT_CMD", "Received RAUMSOLLTEMP_II command: %s", x.c_str());
+            publishWritableNumberDiscovery(writableNumbers[5]);
+            const char* value = x.c_str();
+            writeSignal(&CanMembers[cm_manager], "RAUMSOLLTEMP_II", value);
+            readSignal(&CanMembers[cm_manager], "RAUMSOLLTEMP_II");
+
+    - topic: heatingpump/MANAGER/RAUMSOLLTEMP_III/set
+      then:
+        - lambda: |-
+            ESP_LOGI("MQTT_CMD", "Received RAUMSOLLTEMP_III command: %s", x.c_str());
+            publishWritableNumberDiscovery(writableNumbers[6]);
+            const char* value = x.c_str();
+            writeSignal(&CanMembers[cm_manager], "RAUMSOLLTEMP_III", value);
+            readSignal(&CanMembers[cm_manager], "RAUMSOLLTEMP_III");
+
+    - topic: heatingpump/MANAGER/RAUMSOLLTEMP_NACHT/set
+      then:
+        - lambda: |-
+            ESP_LOGI("MQTT_CMD", "Received RAUMSOLLTEMP_NACHT command: %s", x.c_str());
+            publishWritableNumberDiscovery(writableNumbers[7]);
+            const char* value = x.c_str();
+            writeSignal(&CanMembers[cm_manager], "RAUMSOLLTEMP_NACHT", value);
+            readSignal(&CanMembers[cm_manager], "RAUMSOLLTEMP_NACHT");
+
+
+#########################################
+#                                       #
+#   INTERVAL TIMER                      #
+#                                       #
+#########################################
+interval:
+  # Process signal requests based on request table (runs every second)
+  - interval: 1s
+    then:
+      - lambda: |-
+          processSignalRequests();
+
+  # Process calculated sensor updates (runs every second)
+  - interval: 1s
+    then:
+      - lambda: |-
+          processCalculatedSensors();
+
+  # Republish MQTT discovery every 15 minutes for reliability
+  - interval: 15min
+    then:
+      - lambda: |-
+          republishAllDiscoveries();
+          publishAllWritableNumberDiscoveries(true);
+          publishAllWritableSelectDiscoveries(true);
+
+#########################################
+#                                       #
+#   TEXT SENSOREN                       #
+#                                       #
+#########################################
+text_sensor:
+  #########################################
+  #                                       #
+  #   HOME ASSISTANT TEXT SENSOREN        #
+  #                                       #
+  #########################################
+  - platform: homeassistant
+    name: "Wärmepumpe Datum Setpoint"
+    id: warmepumpe_datum
+    entity_id: input_datetime.heatingpump_date
+
+  - platform: homeassistant
+    name: "Wärmepumpe Uhrzeit Setpoint"
+    id: warmepumpe_uhrzeit
+    entity_id: input_datetime.heatingpump_time
+
+  #########################################
+  #                                       #
+  #   BERECHNETE TEXT SENSORS             #
+  #                                       #
+  #########################################
+  - platform: template
+    name: "SG Ready Aktueller Zustand"
+    id: SG_READY_CURRENT_STATE
+    icon: "mdi:solar-power"
+    update_interval: 5s
+    lambda: |-
+      if (currentSgReadyState == 0) {
+        return std::string("Deaktiviert");
+      } else if (currentSgReadyState == 1) {
+        return std::string("1 - EVU Sperre");
+      } else if (currentSgReadyState == 2) {
+        return std::string("2 - Normal");
+      } else if (currentSgReadyState == 3) {
+        return std::string("3 - Empfohlen");
+      } else if (currentSgReadyState == 4) {
+        return std::string("4 - Zwang");
+      } else {
+        return std::string("Unbekannt");
+      }
+
+  - platform: template
+    name: "DATUM"
+    id: DATUM
+    internal: true
+    icon: "mdi:calendar"
+
+  - platform: template
+    name: "ZEIT"
+    id: ZEIT
+    internal: true
+    icon: "mdi:clock"
+
+#########################################
+#                                       #
+#   BUTTON                              #
+#                                       #
+#########################################
+button:
+  - platform: template
+    name: "Update Uhrzeit"
+    id: update_uhrzeit
+    icon: "mdi:clock-check"
+    on_press:
+      then:
+        lambda: |-
+          updateTime(CanMembers[cm_manager], id(warmepumpe_uhrzeit).state.c_str());
+
+  - platform: template
+    name: "Update Datum"
+    id: update_datum
+    icon: "mdi:calendar-check"
+    on_press:
+      then:
+        lambda: |-
+          updateDate(CanMembers[cm_manager], id(warmepumpe_datum).state.c_str());
+
+  - platform: template
+    name: "Republish MQTT Discoveries"
+    id: republish_mqtt_discoveries
+    icon: "mdi:refresh"
+    on_press:
+      then:
+        lambda: |-
+          republishAllDiscoveries();
+
+  - platform: restart
+    name: "Restart"
+    id: restart_button
+
+  - platform: factory_reset
+    name: "Factory Reset (Clear NVS)"
+    icon: "mdi:restart-alert"
+
+#########################################
+#                                       #
+#   WiFi & Captive Portal               #
+#                                       #
+#########################################
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  use_address: 192.168.30.107  # production device IP for OTA
+  fast_connect: true
+  power_save_mode: none
+  reboot_timeout: 5min
+  ap:
+    ssid: "Heatingpump Fallback Hotspot"
+    password: "AsBl9n46jlOx"
+
+captive_portal:
+
+#########################################
+#                                       #
+#   SENSOR                              #
+#                                       #
+#########################################
+sensor:
+  # SG Ready boost temperature sensors
+  - platform: template
+    name: "SG Ready Boost State 3"
+    id: sg_ready_boost_state3_sensor
+    unit_of_measurement: "°C"
+    device_class: "temperature"
+    state_class: "measurement"
+    accuracy_decimals: 1
+    icon: "mdi:thermometer-plus"
+    update_interval: 30s
+    lambda: |-
+      return sgReadyBoostState3Value();
+
+  - platform: template
+    name: "SG Ready Boost State 4"
+    id: sg_ready_boost_state4_sensor
+    unit_of_measurement: "°C"
+    device_class: "temperature"
+    state_class: "measurement"
+    accuracy_decimals: 1
+    icon: "mdi:thermometer-plus"
+    update_interval: 30s
+    lambda: |-
+      return sgReadyBoostState4Value();
+
+  # WiFi and system sensors
+  - platform: wifi_signal
+    name: "WiFi Signal dBm"
+    icon: "mdi:wifi"
+    update_interval: 60s
+    id: wifi_dbm
+
+  - platform: template
+    name: "WiFi Signal"
+    icon: "mdi:signal"
+    unit_of_measurement: "%"
+    update_interval: 60s
+    id: wifi_percentage
+    lambda: |-
+      float dBm = id(wifi_dbm).state;
+      float MIN_DBM = -100.0; // Minimum RSSI in dBm
+      float MAX_DBM = -30.0; // Maximum RSSI in dBm
+      if (dBm < MIN_DBM) dBm = MIN_DBM;
+      if (dBm > MAX_DBM) dBm = MAX_DBM;
+      return ((dBm - MIN_DBM) / (MAX_DBM - MIN_DBM)) * 100;
+
+  # -----------------------------------------------------------------------
+  # COP energy accumulator sensors (universal — present on all Elster models)
+  # -----------------------------------------------------------------------
+  - platform: template
+    name: "EL_AUFNAHMELEISTUNG_HEIZ_SUM"
+    id: EL_AUFNAHMELEISTUNG_HEIZ_SUM
+    internal: true
+    unit_of_measurement: MWh
+    device_class: energy
+    accuracy_decimals: 3
+    state_class: "total_increasing"
+
+  - platform: template
+    name: "EL_AUFNAHMELEISTUNG_WW_SUM"
+    id: EL_AUFNAHMELEISTUNG_WW_SUM
+    internal: true
+    unit_of_measurement: MWh
+    device_class: energy
+    accuracy_decimals: 3
+    state_class: "total_increasing"
+
+  - platform: template
+    name: "WAERMEERTRAG_2WE_HEIZ_SUM"
+    id: WAERMEERTRAG_2WE_HEIZ_SUM
+    internal: true
+    unit_of_measurement: MWh
+    device_class: energy
+    accuracy_decimals: 3
+    state_class: "total_increasing"
+
+  - platform: template
+    name: "WAERMEERTRAG_2WE_WW_SUM"
+    id: WAERMEERTRAG_2WE_WW_SUM
+    internal: true
+    unit_of_measurement: MWh
+    device_class: energy
+    accuracy_decimals: 3
+    state_class: "total_increasing"
+
+  - platform: template
+    name: "WAERMEERTRAG_HEIZ_SUM"
+    id: WAERMEERTRAG_HEIZ_SUM
+    internal: true
+    unit_of_measurement: MWh
+    device_class: energy
+    accuracy_decimals: 3
+    state_class: "total_increasing"
+
+  - platform: template
+    name: "WAERMEERTRAG_WW_SUM"
+    id: WAERMEERTRAG_WW_SUM
+    internal: true
+    unit_of_measurement: MWh
+    device_class: energy
+    accuracy_decimals: 3
+    state_class: "total_increasing"
+
+  # DHW and heating temperature sensors
+  - platform: template
+    name: "EINSTELL_SPEICHERSOLLTEMP"
+    id: EINSTELL_SPEICHERSOLLTEMP
+    internal: true
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "EINSTELL_SPEICHERSOLLTEMP2"
+    id: EINSTELL_SPEICHERSOLLTEMP2
+    internal: true
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "SPEICHERISTTEMP"
+    id: SPEICHERISTTEMP
+    internal: true
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    filters:
+      - offset: 3.9
+
+  - platform: template
+    name: "SPEICHERSOLLTEMP"
+    id: SPEICHERSOLLTEMP
+    internal: true
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+
+  # COP output sensors
+  - platform: template
+    name: "COP_WW"
+    id: COP_WW
+    internal: true
+    device_class: "power_factor"
+    accuracy_decimals: 2
+
+  - platform: template
+    name: "COP_HEIZ"
+    id: COP_HEIZ
+    internal: true
+    device_class: "power_factor"
+    accuracy_decimals: 2
+
+  - platform: template
+    name: "COP_GESAMT"
+    id: COP_GESAMT
+    internal: true
+    device_class: "power_factor"
+    accuracy_decimals: 2
+
+  # Operating mode and season sensors — used to trigger CAN reads
+  - platform: template
+    name: "PROGRAMMSCHALTER"
+    id: PROGRAMMSCHALTER
+    internal: true
+    lambda: |-
+      readSignal(&CanMembers[cm_manager], "PROGRAMMSCHALTER");
+      return {};
+
+  - platform: template
+    name: "SOMMERBETRIEB"
+    id: SOMMERBETRIEB
+    internal: true
+    lambda: |-
+      readSignal(&CanMembers[cm_manager], "SOMMERBETRIEB");
+      return {};
+
+  - platform: template
+    name: "WW_ECO"
+    id: WW_ECO
+    internal: true
+    lambda: |-
+      readSignal(&CanMembers[cm_manager], "WW_ECO");
+      return {};
